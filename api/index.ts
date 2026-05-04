@@ -75,6 +75,8 @@ const sendResponse = (
     }
     const log_and_send_response = ( value:any ) => {
         log_response(value);
+        if( value.err )
+            res.status(500);
         res.send(value);
         res.end();
         return value;
@@ -215,13 +217,13 @@ export default () => {
     });
     router.post('/tool/getFAQAnswer',express.json({type:'application/json'}),(req:expressCore.Request,res:expressCore.Response) => {
         const sessionId = req.body.sessionId as string || 'unknown_session';
-        return sendResponse(req,res,async () => {
+        return sendResponse(req,res,() => {
             if( req.get(server.config.web.header_name)!==server.config.provider.toolSecret )
                 throw Error(`Access denied`);
             const question = req.body.question as string;
             if( !question )
                 throw Error(`Invalid arguments`);
-            return callVapeApiWithBan('getFAQAnswer', () => VapeApi.getFAQAnswer(sessionId, question));
+            return callVapeApiWithBan('getFAQAnswer',()=>VapeApi.getFAQAnswer(sessionId,question));
         });
     });
     router.post('/pre-call',express.json({type:'application/json'}),(req:expressCore.Request,res:expressCore.Response) => {
