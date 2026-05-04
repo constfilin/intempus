@@ -81,8 +81,10 @@ The project uses `config.js` and environment variables for configuration.
 - `REPL_PORT` (default `1338`)
 - `WEB_PORT` (default `9877`)
 - `LOG_LEVEL` (default `2`)
+- `VAPE_API_TOKEN` (no default)
 - `VAPE_API_TIMEOUT_SEC` (default `60`)
 - `VAPE_API_BAN_PERIOD_SEC` (default `1800`)
+- `VAPI_API_REQUIRE_VERIFIED` (default `false`)
 - `NOTIFICATION_EMAIL_ADDRESS`
 - `NM_AUTH_USER`
 - `NM_AUTH_PASS`

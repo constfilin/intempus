@@ -95,7 +95,7 @@ export default class Server {
         });
     }
     banVapeApi( seconds?: number ) {
-        const sec = seconds ?? this.config.vapeApiBanPeriodSec;
+        const sec = seconds ?? this.config.vapeApi.banPeriodSec;
         this.ban_vape_api_until_date = new Date(Date.now() + sec * 1000);
         this.log(1,`VapeApi manually banned for ${sec}s (until ${this.ban_vape_api_until_date.toISOString()})`);
     }

@@ -24,12 +24,15 @@ export default {
         summarySecret      : (process.env.ELEVENLABS_SUMMARY_SECRET||'[hidden]'),
         voiceId            : (process.env.ELEVENLABS_VOICE_ID||'XcXEQzuLXRU9RcfWzEJt'),
     } : undefined),
-    vapeApiToken                    : (process.env.VAPE_API_TOKEN||'[hidden]'),
     publicUrl                       : (process.env.PUBLIC_URL||'http://127.0.0.1:9876/api'),                          // https://demo.tectransit.com/api/vapi
     replPort                        : (process.env.REPL_PORT ? parseInt(process.env.REPL_PORT) : 1338),
     notificationEmailAddress        : (process.env.NOTIFICATION_EMAIL_ADDRESS || 'mkhesin@intempus.net'),
-    vapeApiTimeoutSec               : (process.env.VAPE_API_TIMEOUT_SEC ? parseInt(process.env.VAPE_API_TIMEOUT_SEC) : 60),   // timeout for vapeApi calls in seconds
-    vapeApiBanPeriodSec             : (process.env.VAPE_API_BAN_PERIOD_SEC ? parseInt(process.env.VAPE_API_BAN_PERIOD_SEC) : 60 * 30),   // ban period for vapeApi calls after timeout in seconds
+    vapeApi : {
+        token              : (process.env.VAPE_API_TOKEN||'[hidden]'),
+        timeoutSec         : (process.env.VAPE_API_TIMEOUT_SEC ? parseInt(process.env.VAPE_API_TIMEOUT_SEC) : 60),   // timeout for vapeApi calls in seconds
+        banPeriodSec       : (process.env.VAPE_API_BAN_PERIOD_SEC ? parseInt(process.env.VAPE_API_BAN_PERIOD_SEC) : 60 * 30),   // ban period for vapeApi calls after timeout in seconds
+        requireVerified    : (["true","on", "1"].includes(process.env.VAPE_API_REQUIRE_VERIFIED)), // whether to require verified calls to vapeApi
+    },
     // global model defaults for assistants
     // web server
     web                             : {

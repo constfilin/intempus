@@ -16,7 +16,6 @@ export interface ElevenLabs {
 export class Config {
     // common params
     spreadsheetId           : string;
-    vapeApiToken            : string;
     googleApiKey            : string;
     worksheetName           : string;
     providerType            : 'vapi'|'elevenLabs';
@@ -26,9 +25,13 @@ export class Config {
     replPort                : number;
     open_ws                 : boolean;
     simulatedPhoneNumber    : string;
-    notificationEmailAddress     : string;
-    vapeApiTimeoutSec       : number;
-    vapeApiBanPeriodSec     : number;
+    notificationEmailAddress: string;
+    vapeApi                 : {
+        token               : string;
+        timeoutSec          : number;
+        banPeriodSec        : number;
+        requireVerified?    : boolean;
+    };
     web                     :   {
         path                :   string;
         loglevel            :   number;
@@ -51,7 +54,8 @@ export class Config {
             pass            : string;
         }
     };
-    constructor( params:Partial<Config> ) {
+    constructor( params:Config ) {
+
         if( !params )
             throw Error(`Config is not provided`);
         if( params.providerType === 'vapi' && params.vapi ) {
@@ -63,20 +67,28 @@ export class Config {
         else {
             throw Error(`Provider type is set to ${params.providerType} but configuration is not provided`);
         }
-        if( params.web ) {
-            if( !params.web.header_name || !(params.vapi?.toolSecret||params.elevenLabs?.toolSecret) )
-                throw Error(`Authentication is not provided`);
-            if( typeof params.web.port !== 'number' )
-                throw Error('Port is not provided'); 
-            if( typeof params.web.loglevel !== 'number' )
-                params.web.loglevel = 1;
-        }
-        if( typeof params.vapeApiTimeoutSec !== 'number' )
-            params.vapeApiTimeoutSec = 10;
-        if( typeof params.vapeApiBanPeriodSec !== 'number' )
-            params.vapeApiBanPeriodSec = 60;
+
+        if( !params.web )
+            throw Error(`No web configuration provided`);
+        if( !params.web.header_name || !(params.vapi?.toolSecret||params.elevenLabs?.toolSecret) )
+            throw Error(`Authentication is not provided`);
+        if( typeof params.web.port !== 'number' )
+            throw Error('Port is not provided'); 
+        if( typeof params.web.loglevel !== 'number' )
+            params.web.loglevel = 1;
+
+        if( !params.vapeApi )
+            throw Error(`No vapeApi configuration provided`);
+        if( !params.vapeApi.token )
+            throw Error(`No vapeApi token provided`);
+        if( typeof params.vapeApi.timeoutSec !== 'number' )
+            params.vapeApi.timeoutSec = 10;
+        if( typeof params.vapeApi.banPeriodSec !== 'number' )
+            params.vapeApi.banPeriodSec = 60;
+
         if( !params.nm )
             throw Error(`No nodemailer configuration`);
+
         Object.assign(this,params);
     }
     get provider() : (Vapi|ElevenLabs) {

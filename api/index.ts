@@ -19,16 +19,16 @@ const callVapeApiWithBan = <T>( callName: string, call: () => Promise<T> ) : Pro
         server.module_log(module.filename,1,`VapeApi banned: ${remainingSec}s remaining`);
         return Promise.reject(new Error(`VapeApi is temporarily unavailable (ban expires in ${remainingSec}s)`));
     }
-    const timeoutMs = server.config.vapeApiTimeoutSec * 1000;
-    const banPeriodMs = server.config.vapeApiBanPeriodSec * 1000;
+    const timeoutMs = (server.config.vapeApi.timeoutSec||10) * 1000;
+    const banPeriodMs = (server.config.vapeApi.banPeriodSec||60) * 1000;
     let   callFinishedAt = undefined as Date|undefined;
     const timeoutPromise = new Promise<never>((resolve,reject) => {
         setTimeout(() => {
             if( callFinishedAt )
                 return resolve(0 as never);
             server.ban_vape_api_until_date = new Date(Date.now() + banPeriodMs);
-            server.module_log(module.filename,0,`VapeApi.${callName} timed out after ${server.config.vapeApiTimeoutSec}s, banning for ${server.config.vapeApiBanPeriodSec}s`);
-            reject(new Error(`VapeApi timed out after ${server.config.vapeApiTimeoutSec}s`));
+            server.module_log(module.filename,0,`VapeApi.${callName} timed out after ${server.config.vapeApi.timeoutSec}s, banning for ${server.config.vapeApi.banPeriodSec}s`);
+            reject(new Error(`VapeApi timed out after ${server.config.vapeApi.timeoutSec}s`));
         }, timeoutMs);
     });
     return Promise.race([ 

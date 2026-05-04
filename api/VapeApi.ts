@@ -11,7 +11,7 @@ const makeApiCall = async (
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${server.config.vapeApiToken}`
+            'Authorization': `Bearer ${server.config.vapeApi.token}`
         },
         body: JSON.stringify(payload)
     };
@@ -37,7 +37,7 @@ export const getUserByPhone = async (sessionId: string, phoneNumber: string): Pr
         },
         { sessionId, phoneNumber }
     );
-    if (resp.error || !resp.data || !resp.data.user || !resp.data.verified)
+    if (resp.error || !resp.data || !resp.data.user || (!resp.data.verified && server.config.vapeApi.requireVerified) )
         throw Error(`User not found or not verified for phone number '${phoneNumber}': ${JSON.stringify(resp)}`);
     return resp.data;
 };
@@ -52,7 +52,7 @@ export const getFAQAnswer = async (sessionId: string, question: string): Promise
         },
         { sessionId, question }
     );
-    if (resp.error || !resp.data || !resp.data.user || !resp.data.verified || !resp.data.reply)
+    if (resp.error || !resp.data || !resp.data.user || (!resp.data.verified && server.config.vapeApi.requireVerified) || !resp.data.reply)
         throw Error(`Cannot get reply for session '${sessionId}' on question '${question}': ${JSON.stringify(resp)}`);
     return resp.data;
 };
