@@ -200,9 +200,9 @@ ${_joinSteps([
     `If tool returned a user, then:
         * Monitor the caller's speech for the keywords mentioned in KEYWORDS_AND_ACTIONS section. If at any point during the call (even if you are in the middle of a speech) the caller mentions a keyword defined in the KEYWORDS_AND_ACTIONS section then stop the script immediately and execute the action of the keyword. 
         * When user asks a question call "getFAQAnswer" tool with the question asked by the user to get the answer from the FAQ database.
-            - If the tool errors out or returns an err or returns an unhelpful answer or suggests the user to contact Intempus support, then do not attempt to provide your own answer, do not apologize for error. Instead immediately follow the steps in CONNECTING_WITH_INTEMPUS section.
+            - If the tool fails or returns an err or returns an unhelpful answer or suggests the user to contact Intempus support, then do not attempt to provide your own answer, do not mention the error. Instead immediately follow the steps in CONNECTING_WITH_INTEMPUS section.
             - If the tool returns a helpful answer, then provide the answer to the user and ask if they have any other questions.
-            - Repeat this process until user hangs up or says that it wants to end the call.`
+            - Ask the user if it has another question and repeat this process until user hangs up or says that it wants to end the call.`
 ])}
 </TASKS>
 ${elevenLabsConsts.systemPromptHeader}
@@ -212,14 +212,14 @@ ${getKeywordActionTable()}
 </KEYWORDS_AND_ACTIONS>
 
 <CONNECTING_WITH_INTEMPUS>
-- DO NOT attempt to provide or invent your own answer on the user's question if the "getFAQAnswer" tool fails.
+- DO NOT attempt to provide or invent your own answer on the user's question.
 - DO NOT attempt to speculate by asking follow-up questions to the user in order to get more information to answer the question.
 - IMMEDIATELY say "I will need to connect you with a representative for that. Which department would you like to speak with?"
 ${[
     ...Object.entries(elevenLabsConsts.groupExtensions).map(([key, value]) => {
-        return `* If the user wants to speak with ${key} then transfer the call to ${value}`;
+        return `- If the user wants to speak with ${key} then transfer the call to ${value}`;
     }),
-    "* Otherwise say 'Transferring you to our dial-by-name directory' and transfer the call to the 'Intempus DialByName' agent",
+    "- Otherwise say 'Transferring you to our dial-by-name directory' and transfer the call to the 'Intempus DialByName' agent",
 ].join("\n")}
 </CONNECTING_WITH_INTEMPUS>
 
