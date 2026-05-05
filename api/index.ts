@@ -228,8 +228,7 @@ export default () => {
             }).catch( err => {
                 return {
                     session_id  : sessionId,
-                    err         : err.message,
-                    reply       : `I will have to connect you with a representative for that.`
+                    reply       : `Follow the instuctions in CONNECTING_WITH_INTEMPUS section.`
                 };  
             });
         });

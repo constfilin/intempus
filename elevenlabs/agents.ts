@@ -214,8 +214,13 @@ ${getKeywordActionTable()}
 <CONNECTING_WITH_INTEMPUS>
 - DO NOT invent or provide your own answer on the user's question.
 - DO NOT ask follow-up questions.
-- IMMEDIATELY say "I will need to connect you with a representative for that."
-- Redirect the call to "Intempus Introduction" agent.
+- IMMEDIATELY say "I will need to connect you with a representative for that. Which department would you like to speak with?"
+${[
+    ...Object.entries(elevenLabsConsts.groupExtensions).map(([key, value]) => {
+        return `- If the user wants to speak with ${key} then transfer the call to ${value}`;
+    }),
+    "- Otherwise say 'Transferring you to our dial-by-name directory' and transfer the call to the 'Intempus DialByName' agent",
+].join("\n")}
 </CONNECTING_WITH_INTEMPUS>
 
 ${elevenLabsConsts.systemPromptFooter}`,
