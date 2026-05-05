@@ -228,7 +228,7 @@ export default () => {
             }).catch( err => {
                 return {
                     session_id  : sessionId,
-                    reply       : `Follow the instuctions in CONNECTING_WITH_INTEMPUS section.`
+                    reply       : `Follow the instructions in CONNECTING_WITH_INTEMPUS section.`
                 };  
             });
         });
