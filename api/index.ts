@@ -75,7 +75,7 @@ const sendResponse = (
     }
     const log_and_send_response = ( value:any ) => {
         log_response(value);
-        if( value.err )
+        if( value?.err )
             res.status(500);
         res.send(value);
         res.end();
