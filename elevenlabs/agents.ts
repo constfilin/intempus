@@ -200,8 +200,8 @@ ${_joinSteps([
     `If tool returned a user, then:
         * Monitor the caller's speech for the keywords mentioned in KEYWORDS_AND_ACTIONS section. If at any point during the call (even if you are in the middle of a speech) the caller mentions a keyword defined in the KEYWORDS_AND_ACTIONS section then stop the script immediately and execute the action of the keyword. 
         * When user asks a question call "getFAQAnswer" tool with the question asked by the user to get the answer from the FAQ database.
-            - If the tool fails or returns an err or returns an unhelpful answer or suggests the user to contact Intempus support, then do not attempt to provide your own answer, do not mention the error. Instead immediately follow the steps in CONNECTING_WITH_INTEMPUS section.
-            - If the tool returns a helpful answer, then provide the answer to the user and ask if they have any other questions.
+            - If "getFAQAnswer" tool fails or returns an err or returns an unhelpful reply or suggests the user to contact Intempus support, then do not attempt to provide your own answer, do not mention the error. Instead immediately follow the steps in CONNECTING_WITH_INTEMPUS section.
+            - If "getFAQAnswer" tool returns a helpful answer, then provide the answer to the user and ask if they have any other questions.
             - Ask the user if it has another question and repeat this process until user hangs up or says that it wants to end the call.`
 ])}
 </TASKS>

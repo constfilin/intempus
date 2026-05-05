@@ -223,7 +223,15 @@ export default () => {
             const question = req.body.question as string;
             if( !question )
                 throw Error(`Invalid arguments`);
-            return callVapeApiWithBan('getFAQAnswer',()=>VapeApi.getFAQAnswer(sessionId,question));
+            return callVapeApiWithBan('getFAQAnswer',() => {
+                return VapeApi.getFAQAnswer(sessionId,question);
+            }).catch( err => {
+                return {
+                    session_id  : sessionId,
+                    err         : err.message,
+                    reply       : `I will have to connect you with a representative for that.`
+                };  
+            });
         });
     });
     router.post('/pre-call',express.json({type:'application/json'}),(req:expressCore.Request,res:expressCore.Response) => {
