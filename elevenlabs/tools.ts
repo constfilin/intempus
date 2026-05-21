@@ -1,7 +1,6 @@
 import { ElevenLabs }       from '@elevenlabs/elevenlabs-js';
 
-import * as elevenLabsConsts  from './consts';
-import * as Config          from '../Config';
+import * as ELabsConsts     from './consts';
 import * as Contacts        from '../Contacts';
 import { server }           from '../Server';
 
@@ -190,6 +189,7 @@ export const getInstructionsByPhone = () : ElevenLabs.ToolRequestModel => {
             type        : "webhook",
             name        : "getInstructionsByPhone",
             description : "Get next instructions based on user phone number",
+            disableInterruptions  : true, // Potentially we have to make it inunrerruptable
             responseTimeoutSecs : 30,
             ..._getToolCallSound(),
             apiSchema : {
@@ -223,8 +223,8 @@ export const getInstructionsByPhone = () : ElevenLabs.ToolRequestModel => {
                 sanitize        : false
             },{
                 source          : "response",
-                dynamicVariable : elevenLabsConsts.phoneTransferDestinationVarName,
-                valuePath       : "contact_phone_number",
+                dynamicVariable : ELabsConsts.phoneTransferDestinationVarName,
+                valuePath       : ELabsConsts.phoneTransferDestinationVarName,
                 sanitize        : false
             }]
         }
@@ -238,7 +238,7 @@ export const getTransferInstructions = () : ElevenLabs.ToolRequestModel => {
             name                : "getTransferInstructions",
             description         : "Get instructions about what to do depending on the property identifier",
             responseTimeoutSecs : 5,
-            disableInterruptions  : false, // Potentially we have to make it inunrerruptable
+            disableInterruptions  : true, // Potentially we have to make it inunrerruptable
             ..._getToolCallSound(),
             apiSchema : {
                 url             : _getToolUrl("getTransferInstructions"),
@@ -268,8 +268,8 @@ export const getTransferInstructions = () : ElevenLabs.ToolRequestModel => {
             },
             assignments : [{
                 source          : "response",
-                dynamicVariable : elevenLabsConsts.phoneTransferDestinationVarName,
-                valuePath       : "contact_phone_number",
+                dynamicVariable : ELabsConsts.phoneTransferDestinationVarName,
+                valuePath       : ELabsConsts.phoneTransferDestinationVarName,
                 sanitize        : false
             }]
         }

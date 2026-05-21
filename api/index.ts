@@ -11,6 +11,7 @@ import * as misc            from '../misc';
 import * as ELabConsts      from '../elevenlabs/consts';
 import stateByAreaCode      from './stateByAreaCode';
 import * as VapeApi         from './VapeApi';
+import * as ELabsConsts     from '../elevenlabs/consts';
 
 const _callVapeApiWithBan = <T>( callName: string, call: () => Promise<T> ) : Promise<T> => {
     const now = new Date();
@@ -189,70 +190,13 @@ export default () => {
                 throw Error(`Invalid arguments`);
             return _callVapeApiWithBan('getFAQAnswer',() => {
                 return VapeApi.getFAQAnswer(sessionId,question);
+            }).then( faqAnswer => {
+                return faqAnswer;
             }).catch( err => {
                 return {
                     session_id  : sessionId,
                     reply       : `Follow the instructions in CONNECTING_WITH_INTEMPUS section.`
                 };  
-            });
-        });
-    });
-    router.post('/tool/getTransferInstructions',express.json({type:'application/json'}),(req:expressCore.Request,res:expressCore.Response) => {
-        return sendResponse(req,res,() => {
-            if( req.get(server.config.web.header_name)!==server.config.provider.toolSecret )
-                throw Error(`Access denied`);
-            const sessionId  = req.body.sessionId as string || 'unknown_session';
-            const propertyId = req.body.propertyId as string;
-            const sectionName = req.body.sectionName as string;
-            const getRedirectToIntempusIntroductionResult = ( instructions:string ) => {
-                return {
-                    session_id              : sessionId,
-                    contact_phone_number    : '',
-                    instructions            : instructions,
-                    // Testing has discovered that if a name of an agent is returned in the instructions then 
-                    // ElevenLabs fails to redirect the to that agent. It says that hte agent is "unknown", 
-                    // see https://github.com/constfilin/intempus/issues/15#issuecomment-4492663954
-                    // 
-                    // So instead of simply returning the instructions to redirect to "Intempus Introduction",
-                    // we are going to error out of the tool and the system prompt of the agent needs to be
-                    // written so that the tool error is properly handled and the agent take the desired action
-                    // in this case. 
-                    err                     : instructions  
-                };
-            };
-            return _callVapeApiWithBan('getTransferTarget',() => {
-                return VapeApi.getTransferTarget(sessionId,propertyId);
-            }).then( data => {
-                if( sectionName ) {
-                    // Here this means that the caller just wants to know if the caller is identified
-                    // but the caller is not yet ready to transfer the call to a phone number.
-                    if( data.contact_phone )
-                        return {
-                            session_id          : sessionId,
-                            contact_phone_number: data.contact_phone,
-                            instructions        : `Follow the instructions in ${sectionName} section.`
-                        };
-                } 
-                else {
-                    // The caller wants to transfer the call to a specific phone number
-                    if( data.contact_name && data.contact_phone )
-                        return {
-                            session_id          : sessionId,
-                            contact_phone_number: data.contact_phone,
-                            instructions        : `Say 'Transferring the call to ${data.contact_name}.' and call tool "transfer_to_number" passing "${data.contact_phone}" in "${ELabConsts.phoneTransferDestinationVarName}" dynamic variable.`
-                        };
-                    if( data.contact_phone )
-                        return {
-                            session_id          : sessionId,
-                            contact_phone_number: data.contact_phone,
-                            instructions        : `Call tool "transfer_to_number" passing "${data.contact_phone}" in "${ELabConsts.phoneTransferDestinationVarName}" dynamic variable.`
-                        };
-                }
-                // Adding special word "Immediately" here to be able to tell this case from
-                // the exception handler case below.
-                return getRedirectToIntempusIntroductionResult(`Immediately transfer the call to "Intempus Introduction" agent.`);
-            }).catch( err => {
-                return getRedirectToIntempusIntroductionResult(`Transfer the call to "Intempus Introduction" agent.`);
             });
         });
     });
@@ -276,7 +220,7 @@ export default () => {
                         session_id          : sessionId,
                         user_first_name     : (user.user.first_name||''),
                         user_last_name      : (user.user.last_name||''),
-                        contact_phone_number: user.contact_phone,
+                        [ELabsConsts.phoneTransferDestinationVarName]   : user.contact_phone,
                         instructions        : `Greet the user by saying "Hi, ${user.user.first_name||'there'}!". Then follow the instructions in "QUESTIONS_AND_ANSWERS" section.`
                     };
                 }).catch( err => {
@@ -284,7 +228,7 @@ export default () => {
                         session_id          : sessionId,
                         first_name          : '',
                         last_name           : '',
-                        contact_phone_number: '',
+                        [ELabsConsts.phoneTransferDestinationVarName]: '',
                         instructions        : `Greet the user by saying "Hi, there!". Then follow the instructions in UNKNOWN_CALLER section.`
                     };
                 });
@@ -294,10 +238,69 @@ export default () => {
                     session_id          : req.body.sessionId,
                     user_first_name     : '',
                     user_last_name      : '',
-                    contact_phone_number: '',
+                    [ELabsConsts.phoneTransferDestinationVarName]   : '',
                     instructions        : `Greet the user by saying "Hi, there!". Then immediately follow the instructions in UNKNOWN_CALLER section.`
                 }  
             }
+        });
+    });
+    router.post('/tool/getTransferInstructions',express.json({type:'application/json'}),(req:expressCore.Request,res:expressCore.Response) => {
+        return sendResponse(req,res,() => {
+            if( req.get(server.config.web.header_name)!==server.config.provider.toolSecret )
+                throw Error(`Access denied`);
+            const sessionId  = req.body.sessionId as string || 'unknown_session';
+            const propertyId = req.body.propertyId as string;
+            const sectionName = req.body.sectionName as string;
+            const getRedirectToIntempusIntroductionResult = ( instructions:string ) => {
+                return {
+                    session_id              : sessionId,
+                    [ELabsConsts.phoneTransferDestinationVarName]    : '',
+                    instructions            : instructions,
+                    // Testing has discovered that if a name of an agent is returned in the instructions then 
+                    // ElevenLabs fails to redirect the to that agent. It says that hte agent is "unknown", 
+                    // see https://github.com/constfilin/intempus/issues/15#issuecomment-4492663954
+                    // 
+                    // So instead of simply returning the instructions to redirect to "Intempus Introduction",
+                    // we are going to error out of the tool and the system prompt of the agent needs to be
+                    // written so that the tool error is properly handled and the agent take the desired action
+                    // in this case. 
+                    err                     : instructions  
+                };
+            };
+            return _callVapeApiWithBan('getTransferTarget',() => {
+                return VapeApi.getTransferTarget(sessionId,propertyId);
+            }).then( transferTarget => {
+                if( sectionName ) {
+                    // Here this means that the caller just wants to know if the caller is identified
+                    // but the caller is not yet ready to transfer the call to a phone number.
+                    if( transferTarget.contact_phone )
+                        return {
+                            session_id          : sessionId,
+                            [ELabsConsts.phoneTransferDestinationVarName]  : transferTarget.contact_phone,
+                            instructions        : `Follow the instructions in ${sectionName} section.`
+                        };
+                } 
+                else {
+                    // The caller wants to transfer the call to a specific phone number
+                    if( transferTarget.contact_name && transferTarget.contact_phone )
+                        return {
+                            session_id          : sessionId,
+                            [ELabsConsts.phoneTransferDestinationVarName]   : transferTarget.contact_phone,
+                            instructions        : `Say 'Transferring the call to ${transferTarget.contact_name}.' and call tool "transfer_to_number" passing "${transferTarget.contact_phone}" in "${ELabConsts.phoneTransferDestinationVarName}" dynamic variable.`
+                        };
+                    if( transferTarget.contact_phone )
+                        return {
+                            session_id          : sessionId,
+                            [ELabsConsts.phoneTransferDestinationVarName]   : transferTarget.contact_phone,
+                            instructions        : `Call tool "transfer_to_number" passing "${transferTarget.contact_phone}" in "${ELabConsts.phoneTransferDestinationVarName}" dynamic variable.`
+                        };
+                }
+                // Adding special word "Immediately" here to be able to tell this case from
+                // the exception handler case below.
+                return getRedirectToIntempusIntroductionResult(`Immediately transfer the call to "Intempus Introduction" agent.`);
+            }).catch( err => {
+                return getRedirectToIntempusIntroductionResult(`Transfer the call to "Intempus Introduction" agent.`);
+            });
         });
     });
     router.post('/pre-call',express.json({type:'application/json'}),(req:expressCore.Request,res:expressCore.Response) => {
