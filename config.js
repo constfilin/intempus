@@ -6,11 +6,13 @@ export default {
     // common params
     path                   : __dirname,
     loglevel               : process.env.LOG_LEVEL ? parseInt(process.env.LOG_LEVEL) : 2,           // defines verbosity
-    spreadsheetId                   : (process.env.SPREADSHEETID||'[hidden]'),
     simulatedPhoneNumber            : (process.env.SIMULATED_PHONE_NUMBER || ''),
-    googleApiKey                    : (process.env.GOOGLE_API_KEY||'[hidden]'),
-    worksheetName                   : (process.env.WORKSHEET_NAME||'Contacts'),
     providerType                    : (process.env.PROVIDER_TYPE||'vapi'),
+    contacts : {
+        spreadsheetId      : (process.env.SPREADSHEETID||'[hidden]'),
+        googleApiKey       : (process.env.GOOGLE_API_KEY||'[hidden]'),
+        worksheetName      : (process.env.WORKSHEET_NAME||'Contacts'),
+    },
     vapi                            : (((process.env.PROVIDER_TYPE||'vapi')==='vapi') ? {
         apiKey             : (process.env.VAPI_API_KEY||'[hidden]'),
         toolSecret         : (process.env.VAPI_TOOL_SECRET||process.env.TOOL_SECRET||'[hidden]'),
