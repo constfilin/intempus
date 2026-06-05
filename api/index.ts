@@ -159,7 +159,7 @@ export default () => {
                 return c.name===canonicalName;
             });
             if( !contact )
-                throw Error(`Cannot find name '${canonicalName}' in ${server.config.worksheetName}`);
+                throw Error(`Cannot find name '${canonicalName}' in ${server.config.contacts.worksheetName}`);
             const djs    = dayjs().tz(contact.timeZone||'America/Los_Angeles');
             const hour   = djs.hour();
             const vmPrompt = contact.vmPrompt || `to describe its issue to '${canonicalName}'`;

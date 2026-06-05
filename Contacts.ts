@@ -63,24 +63,30 @@ export const getFromRows = (
             timeZone            : r.get("TimeZone"),
             phoneNumbers,
             emailAddresses,
-            businessStartHour   : misc.toNumber(r.get("Business Start Hour"),config.web.business_start_hour??8),
-            businessEndHour     : misc.toNumber(r.get("Business End Hour"),config.web.business_end_hour??17),
+            businessStartHour   : misc.toNumber(r.get("Business Start Hour"),config.contacts.businessStartHour??8),
+            businessEndHour     : misc.toNumber(r.get("Business End Hour"),config.contacts.businessEndHour??17),
             vmPrompt            : r.get("VM Prompt"),
         });
         return acc;
     },[] as Contact[]);
 }
 
+export const getFromSheet = async ( sheet:GoogleSpreadsheet.GoogleSpreadsheetWorksheet, warns?:string[] ) : Promise<Contact[]> => {
+    if( !warns )
+        warns = [];
+    return sheet.getRows().then( rows => {
+        return getFromRows(rows,warns);
+    });
+}
+
 export const getRaw = async (
     warns?  : string[]
  ) : Promise<Contact[]> => {
     const config    = Config.get();
-    const sheet = await getSheet(config.googleApiKey,config.spreadsheetId,config.worksheetName);
+    const sheet = await getSheet(config.contacts.googleApiKey,config.contacts.spreadsheetId,config.contacts.worksheetName);
     if( !sheet )
-        throw Error(`Cannot find sheet '${config.worksheetName}'`);
-    if( !warns )
-        warns = [];
-    return sheet.getRows({}).then(rows=>getFromRows(rows,warns));
+        throw Error(`Cannot find sheet '${config.contacts.worksheetName}'`);
+    return getFromSheet(sheet,warns);
 }
 
 export let _contacts = undefined as (Contact[]|undefined);

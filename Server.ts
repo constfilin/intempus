@@ -107,12 +107,10 @@ export default class Server {
     }
     async getContacts() : Promise<Contacts.Contact[]> {
         if( !this.contacts_sheet ) {
-            this.contacts_sheet = await Contacts.getSheet(this.config.googleApiKey,this.config.spreadsheetId,this.config.worksheetName);
+            this.contacts_sheet = await Contacts.getSheet(this.config.contacts.googleApiKey,this.config.contacts.spreadsheetId,this.config.contacts.worksheetName);
             if( !this.contacts_sheet )
-                throw Error(`Cannot find sheet '${this.config.worksheetName}' in ${this.config.spreadsheetId}`);
+                throw Error(`Cannot find sheet '${this.config.contacts.worksheetName}' in ${this.config.contacts.spreadsheetId}`);
         }
-        return this.contacts_sheet.getRows().then( rows => {
-            return Contacts.getFromRows(rows);
-        });
+        return Contacts.getFromSheet(this.contacts_sheet);
     }
 }

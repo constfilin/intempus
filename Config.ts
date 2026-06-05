@@ -17,9 +17,6 @@ export class Config {
     // common params
     loglevel                : number;
     path                    : string;
-    spreadsheetId           : string;
-    googleApiKey            : string;
-    worksheetName           : string;
     providerType            : 'vapi'|'elevenLabs';
     vapi?                   : Vapi;
     elevenLabs?             : ElevenLabs;
@@ -28,6 +25,13 @@ export class Config {
     open_ws                 : boolean;
     simulatedPhoneNumber    : string;
     notificationEmailAddress: string;
+    contacts:               {
+        googleApiKey        : string;
+        spreadsheetId       : string;
+        worksheetName       : string;
+        businessStartHour?  : number;
+        businessEndHour?    : number;
+    }
     vapeApi                 : {
         token               : string;
         timeoutSec          : number;
@@ -37,8 +41,6 @@ export class Config {
     web                     :   {
         port                :   number;
         header_name         :   string;
-        business_start_hour?:   number;
-        business_end_hour?  :   number;
     };
     nm                      :   {
         from                : string;
@@ -84,13 +86,25 @@ export class Config {
             throw Error(`No nodemailer configuration`);
 
         // Default values
-        this.loglevel = 1;
-        this.path     = __dirname;
+        this.loglevel       = 1;
+        this.path           = __dirname;
+        this.providerType   = 'elevenLabs';
+        this.open_ws        = false;
+        this.simulatedPhoneNumber = '+15555555555';
+        this.notificationEmailAddress = '';
+        this.publicUrl      = 'http://localhost';
+        this.replPort       = 0;    // Off by default, can be enabled by setting to a non-zero value
         this.vapeApi  = {
             token         : '',
             timeoutSec    : 10,
             banPeriodSec  : 60
         };
+        this.contacts  = {
+            googleApiKey  : '',
+            spreadsheetId : '',
+            worksheetName : '',
+        };
+        
         Object.assign(this,params);
     }
     get provider() : (Vapi|ElevenLabs) {
