@@ -163,7 +163,9 @@ export const login = async ( config: {
 }
 
 
-export const getPhoneNumbers = async <T extends Object> ( platform:ReturnType<RCSDK['platform']> ) : Promise<PhoneNumber[]> => {
+export const getPhoneNumbers = async <T extends Object> ( 
+    platform:ReturnType<RCSDK['platform']> 
+) : Promise<PhoneNumber[]> => {
     try {
         const result = await _paginateRecords<PhoneNumbersResult>(platform,{timeoutMs:Math.random()*1000},"/restapi/v2/accounts/~/phone-numbers",{});
         return result.records||[];
@@ -172,8 +174,14 @@ export const getPhoneNumbers = async <T extends Object> ( platform:ReturnType<RC
         throw Error(`Failed to get phone numbers from RingCentral: ${err}`);
     }
 }
-export const getExtensions = async ( platform:ReturnType<RCSDK['platform']> ) : Promise<Extension[]> => {
+export const getExtensions = async ( 
+    platform:ReturnType<RCSDK['platform']>,
+    statusFilter? : string[],
+    typeFilter? : string[]
+) : Promise<Extension[]> => {
     try {
+        // TODO:
+        // Support status and type filters
         const result = await _paginateRecords<ExtensionsResult>(platform,{timeoutMs:Math.random()*1000},"/restapi/v1.0/account/~/extension",{});
         return result.records||[];
     }
@@ -181,7 +189,10 @@ export const getExtensions = async ( platform:ReturnType<RCSDK['platform']> ) : 
         throw Error(`Failed to get extensions from RingCentral: ${err}`);
     }
 }
-export const getExtensionDetails = async ( platform:ReturnType<RCSDK['platform']>, extensionId:string ) : Promise<ExtensionDetails> => {
+export const getExtensionDetails = async ( 
+    platform:ReturnType<RCSDK['platform']>, 
+    extensionId:string 
+) : Promise<ExtensionDetails> => {
     try {
         return (await _getRC(platform,{timeoutMs:Math.random()*1000},`/restapi/v1.0/account/~/extension/${extensionId}`,{})) as ExtensionDetails;
     }
@@ -189,7 +200,10 @@ export const getExtensionDetails = async ( platform:ReturnType<RCSDK['platform']
         throw Error(`Failed to get defails of extension #${extensionId} from RingCentral: ${err}`);
     }
 }
-export const getExtensionDetailsList = async ( platform:ReturnType<RCSDK['platform']>, extensionIds:string[] ) : Promise<ExtensionDetails[]> => {
+export const getExtensionDetailsList = async ( 
+    platform:ReturnType<RCSDK['platform']>, 
+    extensionIds:string[] 
+) : Promise<ExtensionDetails[]> => {
     const results = [] as ExtensionDetails[];
     const maxBatchLength = 10;
     const batches = extensionIds.reduce((acc,extId) => {
