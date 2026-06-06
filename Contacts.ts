@@ -1,8 +1,5 @@
-import * as GoogleSpreadsheet   from 'google-spreadsheet';
-import { JWT }                  from 'google-auth-library';
-
-import * as Config              from './Config';
 import * as misc                from './misc';
+import { server }               from './Server';
 
 export interface Contact {
     name                : string;
@@ -41,7 +38,6 @@ export const getFromRows = (
 ) => {
     if( !warns )
         warns = [];
-    const config    = Config.get();
     return rows.reduce( (acc,r,ndx)  => {
         const name = r.get("Name");
         if( typeof name != 'string' ) {
@@ -63,8 +59,8 @@ export const getFromRows = (
             timeZone            : r.get("TimeZone"),
             phoneNumbers,
             emailAddresses,
-            businessStartHour   : misc.toNumber(r.get("Business Start Hour"),config.contacts.businessStartHour??8),
-            businessEndHour     : misc.toNumber(r.get("Business End Hour"),config.contacts.businessEndHour??17),
+            businessStartHour   : misc.toNumber(r.get("Business Start Hour"),server.config.contacts.businessStartHour??8),
+            businessEndHour     : misc.toNumber(r.get("Business End Hour"),server.config.contacts.businessEndHour??17),
             vmPrompt            : r.get("VM Prompt"),
         });
         return acc;
@@ -77,23 +73,4 @@ export const getFromSheet = async ( sheet:GoogleSpreadsheet.GoogleSpreadsheetWor
     return sheet.getRows().then( rows => {
         return getFromRows(rows,warns);
     });
-}
-
-export const getRaw = async (
-    warns?  : string[]
- ) : Promise<Contact[]> => {
-    const config    = Config.get();
-    const sheet = await getSheet(config.contacts.googleApiKey,config.contacts.spreadsheetId,config.contacts.worksheetName);
-    if( !sheet )
-        throw Error(`Cannot find sheet '${config.contacts.worksheetName}'`);
-    return getFromSheet(sheet,warns);
-}
-
-export let _contacts = undefined as (Contact[]|undefined);
-export const get = async (
-    warns?  : string[]
-) : Promise<Contact[]> => {
-    if( !_contacts )
-        _contacts = await getRaw(warns);
-    return _contacts;
 }

@@ -1,24 +1,22 @@
 import * as elevenLabs      from './elevenlabs';
-import * as Contacts        from './Contacts';
-import { ElevenLabsApi }    from './ElevenLabsApi';
-
+import { server }           from './Server';
 import * as VapeApi         from './api/VapeApi';
-import { list } from '@elevenlabs/elevenlabs-js/core/schemas';
 
 export const getCmdPromise = ( args:Record<string,any> ) => {
 
-    const elevenLabsApi = new ElevenLabsApi();
-    const tools         = elevenLabsApi.getTools();
-    const agents        = elevenLabsApi.getAgents();
+    if( !server?.elevenLabsApi )
+        throw Error(`elevenLabsApi is not initialized yet`);
+    const tools         = server.elevenLabsApi.getTools();
+    const agents        = server.elevenLabsApi.getAgents();
     // const structuredOutputs = vapiApi.getStructuredOutputs();
 
     // Commands to manage tools
     switch( args.cmd ) {
-    case 'listContacts':
+    case 'getContacts':
         return (async () => {
             const warns = [] as string[];
             return {
-                contacts : await Contacts.getRaw(warns),
+                contacts : await server.getContacts(warns),
                 warns,
             };
         });
@@ -38,9 +36,9 @@ export const getCmdPromise = ( args:Record<string,any> ) => {
             args.name as string
         ));
     case 'listPhoneNumbers':
-        return (() => elevenLabsApi.conversationalAi.phoneNumbers.list());
+        return (() => server.elevenLabsApi.conversationalAi.phoneNumbers.list());
     case 'deletePhoneNumber':
-        return (() => elevenLabsApi.conversationalAi.phoneNumbers.delete(args.id));
+        return (() => server.elevenLabsApi.conversationalAi.phoneNumbers.delete(args.id));
     case 'listConversations':
         const listArgs = {} as Record<string,any>;
         // Sanitize the arguments for listConversations request
@@ -57,7 +55,7 @@ export const getCmdPromise = ( args:Record<string,any> ) => {
         if( typeof args.limit === 'number' && args.limit > 0 )
             listArgs.pageSize = args.limit;
         // Read to call
-        return (() => elevenLabsApi.conversationalAi.conversations.list(listArgs).then( res => {
+        return (() => server.elevenLabsApi.conversationalAi.conversations.list(listArgs).then( res => {
             return {
                 ...res,
                 exitCode : res.conversations.length
@@ -103,7 +101,7 @@ export const getCmdPromise = ( args:Record<string,any> ) => {
                 contacts,
                 existingTool,
             ] = await Promise.all([
-                Contacts.get(),
+                server.getContacts(),
                 tools.getByName(args.name),
             ]);
             return tools.credate(
@@ -119,7 +117,7 @@ export const getCmdPromise = ( args:Record<string,any> ) => {
                 existingAgent,
                 agentsByName,
             ] = await Promise.all([
-                Contacts.get(),
+                server.getContacts(),
                 tools.listByName(),
                 agents.getByName(args.name),
                 agents.listByName(),
@@ -151,7 +149,7 @@ export const getCmdPromise = ( args:Record<string,any> ) => {
                 contacts,
                 toolsByName
             ] = await Promise.all([
-                Contacts.get(),
+                server.getContacts(),
                 tools.listByName(),
             ]);
             return Promise.all(
@@ -170,7 +168,7 @@ export const getCmdPromise = ( args:Record<string,any> ) => {
                 toolsByName,
                 agentsByName,
             ] = await Promise.all([
-                Contacts.get(),
+                server.getContacts(),
                 tools.listByName(),
                 agents.listByName(),
             ]);
@@ -211,7 +209,7 @@ export const getCmdPromise = ( args:Record<string,any> ) => {
                 agentsByName,
                 // structuredOutputsByName
             ] = await Promise.all([
-                Contacts.get(),
+                server.getContacts(),
                 tools.listByName(),
                 agents.listByName(),
                 // structuredOutputs.listByName(),

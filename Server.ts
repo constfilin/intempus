@@ -2,38 +2,67 @@ import util                     from 'node:util';
 import net                      from 'node:net';
 import repl                     from 'node:repl';
 
-import * as GoogleSpreadsheet   from 'google-spreadsheet';
+import { SDK as RCSDK }         from '@ringcentral/sdk';
 import nodemailer               from 'nodemailer';
 import * as ws                  from 'ws';
 
 import dayjs                    from './day-timezone';
-import * as Config              from './Config';
+import Config                   from './Config';
 import * as Contacts            from './Contacts';
 import { ElevenLabsApi }        from './ElevenLabsApi';
+
+export interface RCExtension {
+
+}
 
 export let server = {} as Server;
 
 export default class Server {
-
-    module_log_level        : Record<string,number> = {};
-    config                  : Readonly<Config.Config>;
-    contacts_sheet          : (GoogleSpreadsheet.GoogleSpreadsheetWorksheet|undefined);
-    nm_transport            : (nodemailer.Transporter|undefined);
-    ws_by_url               : Record<string,ws.WebSocket>; 
+    //
+    config                  : Readonly<Config>;
+    ringCentral             : {
+        platform            : ReturnType<RCSDK['platform']>;
+        extensionsDetails?  : Record<string,RCExtension>;
+    };
+    nmTransport             : (nodemailer.Transporter|undefined);
+    wsByUrl                 : Record<string,ws.WebSocket>; 
     elevenLabsApi           : ElevenLabsApi;
+    //
+    module_log_level        : Record<string,number> = {};
     ban_vape_api_until_date?: Date;
 
     constructor() {
-        this.config         = Config.get();
-        this.contacts_sheet = undefined; // Let's do it at the very first request
-        this.nm_transport   = nodemailer.createTransport(this.config.nm);
-        this.ws_by_url      = {};
-        this.elevenLabsApi  = new ElevenLabsApi();
-        this.init_repl();
         server = this;
+        this.config         = new Config(require('./config.js').default);
+        this.nmTransport    = nodemailer.createTransport(this.config.nm);
+        this.wsByUrl        = {};
+        this.elevenLabsApi  = new ElevenLabsApi();
+        this.ringCentral    = {
+            platform     : {} as ReturnType<RCSDK['platform']>  // get initialized in init()
+        };
+        this.initREPL();
         return this;
     }
-    init_repl() {
+    async init() : Promise<Server> {
+        this.ringCentral = await this.initRingCentral();
+        this.moduleLog(module.filename,1,`Server initialized with provider ${this.config.providerType}`);
+        return this;
+    }
+    private async initRingCentral() {
+        try {
+            const sdk      = new RCSDK(this.config.contacts.rc);
+            const platform = sdk.platform();
+            await platform.login(this.config.contacts.rc);
+            this.moduleLog(module.filename,1,`Successfully logged in to RingCentral platform with clientId=${this.config.contacts.rc.clientId}`);
+            return {
+                platform,
+            };
+        } 
+        catch( e ) {
+            throw Error(`Failed to initialize RingCentral platform: ${e}`);
+        }
+    }
+    private initREPL() {
         if( this.config.replPort<=0 )
           return;
         // Follows https://gist.github.com/TooTallNate/2209310
@@ -67,7 +96,7 @@ export default class Server {
             host : "localhost"
         });        
     }
-    log_prefix( level:number ) {
+    private log_prefix( level:number ) {
         return `${dayjs().format("YYYY-MM-DD HH:mm:ss")}:${level}`;
     }
     log( level:number, ...args:any[] ) {
@@ -77,7 +106,7 @@ export default class Server {
         }
         return this;
     }
-    module_log( filename:string, level:number, ...args:any[] ) {
+    moduleLog( filename:string, level:number, ...args:any[] ) {
         const modname  = (filename.startsWith(this.config.path) ? filename.substring(this.config.path.length) : filename).replace(/^.*\/([^/\.]+)\.[^\.]+$/,"$1");
         const loglevel = (modname in this.module_log_level) ? this.module_log_level[modname] : this.config.loglevel;
         if( loglevel>=level ) {
@@ -87,9 +116,9 @@ export default class Server {
         return this;
     }    
     sendEmail(args:{ to:string, subject:string, text:string }) : Promise<void> {
-        if( !this.nm_transport )
+        if( !this.nmTransport )
             throw Error(`Transport is not initialized`);
-        return this.nm_transport.sendMail({
+        return this.nmTransport.sendMail({
             from    : this.config.nm.from,
             to      : args.to,
             subject : args.subject,
@@ -105,12 +134,59 @@ export default class Server {
         this.ban_vape_api_until_date = undefined;
         this.log(1,`VapeApi ban cleared`);
     }
-    async getContacts() : Promise<Contacts.Contact[]> {
-        if( !this.contacts_sheet ) {
-            this.contacts_sheet = await Contacts.getSheet(this.config.contacts.googleApiKey,this.config.contacts.spreadsheetId,this.config.contacts.worksheetName);
-            if( !this.contacts_sheet )
-                throw Error(`Cannot find sheet '${this.config.contacts.worksheetName}' in ${this.config.contacts.spreadsheetId}`);
-        }
-        return Contacts.getFromSheet(this.contacts_sheet);
+    async getContacts( warns?: string[] ) : Promise<Contacts.Contact[]> {
+        console.log({
+            'this.ringCentral': this.ringCentral,
+        })
+        const [
+            phoneNumbers,
+            { 
+                extensionList,
+                extensionDetails,
+            }
+        ] = await Promise.all([
+            this.ringCentral.platform.get("/restapi/v2/accounts/~/phone-numbers",{})
+                .then( res => res.json() )
+                .catch( err => {
+                    throw Error(`Failed to get phone numbers from RingCentral: ${err}`);
+                }),
+            this.ringCentral.platform.get("/restapi/v1.0/account/~/extension",{})
+                .then( res => res.json() )
+                .then( extensionList => {
+                    // If extension details are available in the cache, use them
+                    if( this.ringCentral.extensionsDetails )
+                        return {
+                            extensionList,
+                            extensionDetails : this.ringCentral.extensionsDetails 
+                        };
+                    // Have to do this the hard way
+                    return Promise.all(
+                        (extensionList.records||[]).map( (ext:Record<string,any>) => {
+                            return this.ringCentral.platform.get(`/restapi/v1.0/account/~/extension/${ext.id}`,{})
+                                .then( res => res.json() )
+                                .catch( err => {
+                                    throw Error(`Failed to get extension details from RingCentral: ${err}`);
+                                });
+                        })
+                    ).then( extensionDetails => {
+                        return {
+                            extensionList,
+                            extensionDetails : extensionDetails.reduce( (acc,details) => {
+                                acc[details.id] = details;
+                                return acc;
+                            },{} as Record<string,RCExtension>)
+                        }
+                    });
+                })
+                .catch( err => {
+                    throw Error(`Failed to get extensions from RingCentral: ${err}`);
+                })
+            ]);
+        console.log({
+            phoneNumbers,
+            extensionList,
+            extensionDetails,
+        })
+        throw Error(`Not implemented yet: need to correlate phone numbers with extensions to get the contacts list`);
     }
 }

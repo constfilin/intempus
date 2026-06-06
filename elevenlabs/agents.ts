@@ -1,12 +1,9 @@
 import { ElevenLabs } from '@elevenlabs/elevenlabs-js';
 
-import * as Config              from '../Config';
 import * as Contacts            from '../Contacts';
+import { server }               from '../Server';
 
 import * as elevenLabsConsts    from './consts';
-import * as tools               from './tools';
-import { TestRunMetadataTestType } from '@elevenlabs/elevenlabs-js/api';
-import { get } from 'node:http';
 
 ////////////////////////////////////////////////////////////////////////////////
 // helpers
@@ -135,7 +132,6 @@ const _completeAgent = (
 ) : CreateAgentRequest => {
     // Build a complete ElevenLabs agent config from partial overrides.
     // This is the ElevenLabs counterpart of intempus/assistants.ts `_completeAssistant`.
-    const config = Config.get();
     //console.log(JSON.stringify(agent,null,4));
     //throw Error("!");
     return {
@@ -146,7 +142,7 @@ const _completeAgent = (
                 language    : agent.conversationConfig?.agent?.language ?? "en",
                 prompt: {
                     prompt      : agent.conversationConfig?.agent?.prompt?.prompt,
-                    llm         : config.elevenLabs!.model as ElevenLabs.Llm,
+                    llm         : server.config.elevenLabs!.model as ElevenLabs.Llm,
                     temperature : 0.3,
                     maxTokens   : 300,
                     toolIds     : agent.conversationConfig?.agent?.prompt?.toolIds,
@@ -156,8 +152,8 @@ const _completeAgent = (
                 },
             },
             tts: {
-                voiceId: config.elevenLabs!.voiceId,
-                expressiveMode: true
+                voiceId         : server.config.elevenLabs!.voiceId,
+                expressiveMode  : true
             },
             ...(agent.conversationConfig?.asr ? { asr: agent.conversationConfig.asr } : {}),
             ...(agent.conversationConfig?.languagePresets ? { languagePresets: agent.conversationConfig.languagePresets } : {}),
@@ -360,7 +356,6 @@ export const getUnkHOA = (
     toolsByName : Record<string,ElevenLabs.Tool>,
     agentsByName? : Record<string,any>,
 ) : CreateAgentRequest => {
-    const config = Config.get();
     return _completeAgent(
         {
             name         : "Intempus HOA",
@@ -408,7 +403,7 @@ ${_joinSteps([
     "Ask for the name of the property",
     "Confirm both details back to the caller",
     `ONLY AFTER confirming the caller's name and the property name, send an email using the 'sendEmail' tool with:
-    - To: "${config.notificationEmailAddress||'mkhesin@intempus.net'}"
+    - To: "${server.config.notificationEmailAddress||'mkhesin@intempus.net'}"
     - Subject: "New Call to HOA: [Property Name] - From [Caller Name]"
     - Body: "A caller named [Caller Name] is inquiring about property [Property Name] and is asking about [Caller's Request]"`
 ])}
@@ -445,7 +440,6 @@ export const getUnkPropertyOwner = (
     toolsByName : Record<string,ElevenLabs.Tool>,
     agentsByName? : Record<string,any>,
 ) : CreateAgentRequest => {
-    const config = Config.get();
     return _completeAgent(
         {
             name         : "Intempus PropertyOwner",
@@ -486,7 +480,7 @@ ${_joinSteps([
     "Ask for the name of the property",
     "Confirm both details back to the caller",
     `ONLY AFTER confirming the caller's name and the property name, send an email using the 'sendEmail' tool with:
-    - To: "${config.notificationEmailAddress||'mkhesin@intempus.net'}"
+    - To: "${server.config.notificationEmailAddress||'mkhesin@intempus.net'}"
     - Subject: "New Call to PropertyOwner: [Property Name] - From [Caller Name]"
     - Body: "A caller named [Caller Name] is inquiring about property [Property Name] and is asking about [Caller's Request]"`
 ])}
@@ -568,7 +562,6 @@ export const getUnkCallbackForm = (
     toolsByName : Record<string,ElevenLabs.Tool>,
     agentsByName? : Record<string,any>,
 ) : CreateAgentRequest => {
-    const config = Config.get();
     return _completeAgent(
         {
             name         : "Intempus CallbackForm",
@@ -585,7 +578,7 @@ ${_joinSteps([
     `Ask caller: "What is your first and last name?" and save the answer as 'name'.`,
     `Ask caller: "Would you like to leave us your email address" and if the caller responds affirmatively, then ask "Please provide your email address", re-confirm it and after the re-confirmation save the answer as 'emailAddress'.`,
     `If the caller confirms the information, then tell them: "Thank you for providing this information. A representative will reach out to you shortly." and send an email:
-        - To: "${config.notificationEmailAddress||'mkhesin@intempus.net'}"
+        - To: "${server.config.notificationEmailAddress||'mkhesin@intempus.net'}"
         - Subject: "New Call for CallbackForm: [Property Name] - From [Caller Name]"
         - Body: "A client {{clientType}} is interested in {{propertyInterest}}. Property address is {{propertyAddress}}. Location of interest is {{locationInterest}}. Client name is {{name}}, email address is {{emailAddress}}, phone number is {{customer.number}}.`,
 ])}

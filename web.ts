@@ -10,8 +10,8 @@ import ejs          from 'ejs';
 import Server       from './Server';
 import api          from './api/';
 
-const web = () => {
-    const server = new Server();
+const web = async () => {
+    const server = await (new Server()).init();
     const app    = express();
     app.engine('ejs',(path,data,cb) => ejs.renderFile(path,data,cb));
     // Adding the next line breaks api/index.ts where the request body needs to be read as a string
@@ -20,7 +20,7 @@ const web = () => {
     app.set('trust proxy','loopback');
     app.use("/api",api());
     app.listen(server.config.web.port,'localhost',() => {
-        server.module_log(module.filename,0,`Started at port ${server.config.web.port} at log level ${server.config.loglevel}`);
+        server.moduleLog(module.filename,0,`Started at port ${server.config.web.port} at log level ${server.config.loglevel}`);
     });
 };
 
