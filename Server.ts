@@ -17,10 +17,8 @@ export let server = {} as Server;
 export default class Server {
     //
     config                  : Readonly<Config>;
-    ringCentral             : {
-        platform            : ReturnType<RCSDK['platform']>;
-        extensionsDetailsById?  : Record<string,RingCentral.ExtensionDetails>;
-    };
+    ringCentral             : RingCentral.RingCentral;
+    extensionsDetailsById?  : Record<string,RingCentral.ExtensionDetails>;
     nmTransport             : (nodemailer.Transporter|undefined);
     wsByUrl                 : Record<string,ws.WebSocket>; 
     elevenLabsApi           : ElevenLabsApi;
@@ -34,21 +32,14 @@ export default class Server {
         this.nmTransport    = nodemailer.createTransport(this.config.nm);
         this.wsByUrl        = {};
         this.elevenLabsApi  = new ElevenLabsApi();
-        this.ringCentral    = {
-            platform     : {} as ReturnType<RCSDK['platform']>  // get initialized in init()
-        };
+        this.ringCentral    = new RingCentral.RingCentral(this.config.contacts.rc);
         this.initREPL();
         return this;
     }
     async init() : Promise<Server> {
-        this.ringCentral = await this.initRingCentral();
+        await this.ringCentral.login();
         this.moduleLog(module.filename,1,`Server initialized with provider ${this.config.providerType}`);
         return this;
-    }
-    private async initRingCentral() {
-        return {
-            platform : await RingCentral.login(this.config.contacts.rc)
-        };
     }
     private initREPL() {
         if( this.config.replPort<=0 )
@@ -132,7 +123,7 @@ export default class Server {
                 extensionDetailsById,
             }
         ] = await Promise.all([
-            RingCentral.getPhoneNumbers(this.ringCentral.platform).then( phoneNumbers => {
+            this.ringCentral.getPhoneNumbers().then( phoneNumbers => {
                 return phoneNumbers.reduce( (acc,phoneNumber) => {
                     if( !phoneNumber.extension ) {
                         warns?.push(`Phone number ${phoneNumber.phoneNumber} is not assigned to any extension, skipping`);
@@ -144,24 +135,24 @@ export default class Server {
                     return acc;
                 },{} as Record<string,RingCentral.PhoneNumber[]>);
             }),
-            RingCentral.getExtensions(this.ringCentral.platform)
+            this.ringCentral.getExtensions(['Enabled'],['User'])
                 .then( extensions => {
                     // If extension details are available in the cache, use them
-                    if( this.ringCentral.extensionsDetailsById )
+                    if( this.extensionsDetailsById )
                         return {
                             extensions,
-                            extensionDetailsById: this.ringCentral.extensionsDetailsById 
+                            extensionDetailsById: this.extensionsDetailsById 
                         };
                     // Have to do this the hard way
-                    return RingCentral.getExtensionDetailsList(this.ringCentral.platform,extensions.map(ext=>String(ext.id)))
+                    return this.ringCentral.getExtensionDetailsList(extensions.map(ext=>String(ext.id)))
                         .then( extensionDetailList => {
-                            this.ringCentral.extensionsDetailsById = extensionDetailList.reduce( (acc,details) => {
+                            this.extensionsDetailsById = extensionDetailList.reduce( (acc,details) => {
                                 acc[details.id] = details;
                                 return acc;
                             },{} as Record<string,RingCentral.ExtensionDetails>);
                             return {
                                 extensions,
-                                extensionDetailsById: this.ringCentral.extensionsDetailsById
+                                extensionDetailsById: this.extensionsDetailsById
                             }
                         });
                 })

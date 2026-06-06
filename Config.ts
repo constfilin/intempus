@@ -32,6 +32,7 @@ export class Config {
             clientSecret    : string;
             jwt             : string;
             server          : string;
+            apiCallRateMs   : number;
         }
         // defaults
         businessStartHour?  : number;

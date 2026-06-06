@@ -14,6 +14,7 @@ export default {
             clientSecret    : (process.env.RC_CLIENT_SECRET||'[hidden]'),
             jwt             : (process.env.RC_JWT||'[hidden]'),
             server          : (process.env.RC_SERVER||'https://platform.ringcentral.com'),
+            apiCallRateMs   : (process.env.RC_API_CALL_RATE_MS ? parseInt(process.env.RC_API_CALL_RATE_MS) : 500)
         },
         businessStartHour  : (process.env.BUSINESS_START_HOUR ? parseInt(process.env.BUSINESS_START_HOUR) : 9),   // hour of day in local time when business hours start
         businessEndHour    : (process.env.BUSINESS_END_HOUR ? parseInt(process.env.BUSINESS_END_HOUR) : 17),     // hour of day in local time when business hours end

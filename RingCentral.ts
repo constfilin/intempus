@@ -1,5 +1,6 @@
 import { SDK as RCSDK } from '@ringcentral/sdk';
 import { server } from './Server';
+import { models } from '@elevenlabs/elevenlabs-js/api';
 
 export interface Paging {
     page            : number;
@@ -88,136 +89,137 @@ export interface ExtensionsResult {
     };
 }
 
-const _getRC = <T extends {}>( 
-    platform    : ReturnType<RCSDK['platform']>, 
-    context     : {
-        timeoutMs : number;
-        count?       : number;
-    },
-    url         : string, 
-    query       : Record<string,any>
-) : Promise<T> => {
-    const retryableErrorMessages = [
-        "Request rate exceeded",
-        "429 Too Many Requests"
-    ];
-    context.count = (context.count||0)+1;
-    return platform.get(url,query)
-        .then( res => {
-            return res.json();
-        })
-        .then( json => {
-            server.moduleLog(module.filename,1,`Got from '${url}'`,json);
-            return json as T;
-        })
-        .catch( err => {
-            if( !retryableErrorMessages.includes(err.message) )
-                throw Error(`Cannot call ${url} (${err.message})`);
-            // Do a random wait and repeat
-            server.moduleLog(module.filename,3,`Got err '${err.message}' from '${url}', will re-try after ${context.timeoutMs}ms, count is ${context.count}`);
-            return (new Promise((resolve)=>setTimeout(resolve,context.timeoutMs))).then(() => {
-                // Do exponential backoff
-                context.timeoutMs = 2*context.timeoutMs+Math.random()*5000;
-                return _getRC(platform,context,url,query);
-            })
+export class RingCentral {
+
+    private apiCallRateMs   : number;
+    private platform        : ReturnType<RCSDK['platform']>;
+    private lastApiCallMs   : number = 0;
+
+    private waitApi() : Promise<void> {
+        // See https://developers.ringcentral.com/guide/basics/rate-limits
+        return new Promise((resolve) => {
+            const waitMs = (this.lastApiCallMs+this.apiCallRateMs)-Date.now();
+            if( waitMs<0 )
+                resolve();
+            else 
+                setTimeout(resolve,waitMs);
         });
-}
-const _paginateRecords = async <T extends { records:any[], paging:Paging }>(
-    platform : ReturnType<RCSDK['platform']>,
-    context  : {
-        timeoutMs : number,
-        count?    : number
-    },
-    url      : string,
-    query    : Record<string,any>
-) => {
-    const result = {
-        records : []
-    } as unknown as T;
-    for( let pageNdx=1; pageNdx<100; pageNdx++ ) {
-        const page = (await _getRC<T>(platform,context,url,{page:pageNdx}));
-        result.records.push(...page.records);
-        if( result.records.length>=page.paging.totalElements )
-            break;
-        server.moduleLog(module.filename,2,`Got ${result.records.length} records of '${url}, total records is ${page.paging.totalElements}, going to page #${pageNdx+1}`)
     }
-    return result;
-
-}
-
-export const login = async ( config: {
-    clientId        : string;
-    clientSecret    : string;
-    jwt             : string;
-    server          : string;
-} ) : Promise<ReturnType<RCSDK['platform']>> => {
-    try {
-        const sdk      = new RCSDK(config);
-        const platform = sdk.platform();
-        await platform.login(config);
-        return platform;
+    private callApi<T extends {}>( 
+        url         : string, 
+        query       : Record<string,any>
+    ) : Promise<T> {
+        const retryableErrorMessages = [
+            "Request rate exceeded",
+            "429 Too Many Requests"
+        ];
+        const x_rate_limit_remaining_header = "x-rate-limit-remaining";
+        return this.waitApi()
+            .then(()=>{
+                return this.platform.get(url,query).finally(()=>{
+                    this.lastApiCallMs = Date.now();
+                });
+            })
+            .then( res => {
+               return res.json();
+            })
+            .then( json => {
+                server.moduleLog(module.filename,2,`Got from '${url}', resetting call rate`,json);
+                this.apiCallRateMs = this.config.apiCallRateMs;
+                return json as T;
+            })
+            .catch( err => {
+                if( !retryableErrorMessages.includes(err.message) )
+                    throw Error(`Cannot call ${url} (${err.message})`);
+                // Do a random wait with exponential back-off
+                this.apiCallRateMs *= 1+Math.random();
+                server.moduleLog(module.filename,3,`Got err '${err.message}' from '${url}', will re-try after ${this.apiCallRateMs}ms`);
+                return this.callApi(url,query);
+            });
     }
-    catch( err ) {
-        throw Error(`Failed to login to RingCentral platform: ${err}`);
-    }
-}
-
-
-export const getPhoneNumbers = async <T extends Object> ( 
-    platform:ReturnType<RCSDK['platform']> 
-) : Promise<PhoneNumber[]> => {
-    try {
-        const result = await _paginateRecords<PhoneNumbersResult>(platform,{timeoutMs:Math.random()*1000},"/restapi/v2/accounts/~/phone-numbers",{});
-        return result.records||[];
-    }
-    catch( err ) {
-        throw Error(`Failed to get phone numbers from RingCentral: ${err}`);
-    }
-}
-export const getExtensions = async ( 
-    platform:ReturnType<RCSDK['platform']>,
-    statusFilter? : string[],
-    typeFilter? : string[]
-) : Promise<Extension[]> => {
-    try {
-        // TODO:
-        // Support status and type filters
-        const result = await _paginateRecords<ExtensionsResult>(platform,{timeoutMs:Math.random()*1000},"/restapi/v1.0/account/~/extension",{});
-        return result.records||[];
-    }
-    catch( err ) {
-        throw Error(`Failed to get extensions from RingCentral: ${err}`);
-    }
-}
-export const getExtensionDetails = async ( 
-    platform:ReturnType<RCSDK['platform']>, 
-    extensionId:string 
-) : Promise<ExtensionDetails> => {
-    try {
-        return (await _getRC(platform,{timeoutMs:Math.random()*1000},`/restapi/v1.0/account/~/extension/${extensionId}`,{})) as ExtensionDetails;
-    }
-    catch( err ) {
-        throw Error(`Failed to get defails of extension #${extensionId} from RingCentral: ${err}`);
-    }
-}
-export const getExtensionDetailsList = async ( 
-    platform:ReturnType<RCSDK['platform']>, 
-    extensionIds:string[] 
-) : Promise<ExtensionDetails[]> => {
-    const results = [] as ExtensionDetails[];
-    const maxBatchLength = 10;
-    const batches = extensionIds.reduce((acc,extId) => {
-        let batch = acc.at(-1);
-        if( !batch || batch.length>=maxBatchLength ) {
-            batch = [];
-            acc.push(batch);
+    private async paginateRecords<T extends { records:any[], paging:Paging }>(
+        url      : string,
+        query    : Record<string,any>
+    ) {
+        const result = {
+            records : []
+        } as unknown as T;
+        for( let pageNdx=1; pageNdx<100; pageNdx++ ) {
+            const page = (await this.callApi<T>(url,Object.assign(query,{page:pageNdx})));
+            result.records.push(...page.records);
+            if( result.records.length>=page.paging.totalElements )
+                break;
+            server.moduleLog(module.filename,2,`Got ${result.records.length} records of '${url}, total records is ${page.paging.totalElements}, going to page #${pageNdx+1}`)
         }
-        batch.push(extId);
-        return acc;
-    },[] as string[][]);
-    for( const batch of batches ) {
-        const batchResults = await Promise.all(batch.map(id=>getExtensionDetails(platform,id)));
-        results.push(...batchResults);
+        return result;
     }
-    return results;
+
+    constructor( private config: {
+        clientId        : string;
+        clientSecret    : string;
+        jwt             : string;
+        server          : string;
+        apiCallRateMs   : number
+    } ) {
+        this.config   = config;
+        this.apiCallRateMs = config.apiCallRateMs;
+        this.platform = {} as ReturnType<RCSDK['platform']>;
+    }
+    async login() : Promise<void> {
+        try {
+            const sdk      = new RCSDK(this.config);
+            const platform = sdk.platform();
+            await platform.login(this.config);
+            this.platform = platform;
+        }
+        catch( err ) {
+            throw Error(`Failed to login to RingCentral platform: ${err}`);
+        }
+    }
+    async getPhoneNumbers() : Promise<PhoneNumber[]> {
+        try {
+            const result = await this.paginateRecords<PhoneNumbersResult>("/restapi/v2/accounts/~/phone-numbers",{});
+            return result.records||[];
+        }
+        catch( err ) {
+            throw Error(`Failed to get phone numbers from RingCentral: ${err}`);
+        }
+    }
+    async getExtensions( statusFilter? : string[], typeFilter? : string[] ) : Promise<Extension[]> {
+        try {
+            // TODO:
+            // Support status and type filters
+            const result = await this.paginateRecords<ExtensionsResult>("/restapi/v1.0/account/~/extension",{});
+            return result.records||[];
+        }
+        catch( err ) {
+            throw Error(`Failed to get extensions from RingCentral: ${err}`);
+        }
+    }
+    async getExtensionDetails( extensionId:string ) : Promise<ExtensionDetails> {
+        try {
+            return (await this.callApi(`/restapi/v1.0/account/~/extension/${extensionId}`,{})) as ExtensionDetails;
+        }
+        catch( err ) {
+            throw Error(`Failed to get defails of extension #${extensionId} from RingCentral: ${err}`);
+        }
+    }
+    async getExtensionDetailsList( extensionIds:string[] ) : Promise<ExtensionDetails[]> {
+        const results = [] as ExtensionDetails[];
+        const maxBatchLength = 10;
+        const batches = extensionIds.reduce((acc,extId) => {
+            let batch = acc.at(-1);
+            if( !batch || batch.length>=maxBatchLength ) {
+                batch = [];
+                acc.push(batch);
+            }
+            batch.push(extId);
+            return acc;
+        },[] as string[][]);
+        for( const batch of batches ) {
+            const batchResults = await Promise.all(batch.map(id=>this.getExtensionDetails(id)));
+            results.push(...batchResults);
+        }
+        return results;
+    }
 }
