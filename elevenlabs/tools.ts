@@ -1,7 +1,7 @@
 import { ElevenLabs }       from '@elevenlabs/elevenlabs-js';
 
 import * as ELabsConsts     from './consts';
-import * as Contacts        from '../Contacts';
+import Contact              from '../Contact';
 import { server }           from '../Server';
 
 // ---------------------------------------------------------------------------
@@ -35,7 +35,7 @@ const _getToolCallSound = () : Partial<ElevenLabs.WebhookToolConfigInput> => {
  * dispatchCall – look up a contact by name, check time-zone / business hours
  * and return dispatch instructions.
  */
-export const getDispatchCall = ( contacts:Contacts.Contact[] ) : ElevenLabs.ToolRequestModel => {
+export const getDispatchCall = ( contacts:Contact[] ) : ElevenLabs.ToolRequestModel => {
     return {
         toolConfig : {
             type        : "webhook",
@@ -70,7 +70,7 @@ export const getDispatchCall = ( contacts:Contacts.Contact[] ) : ElevenLabs.Tool
 /**
  * sendEmail – send an email to one of the known contacts.
  */
-export const getSendEmail = ( contacts:Contacts.Contact[] ) : ElevenLabs.ToolRequestModel => {
+export const getSendEmail = ( contacts:Contact[] ) : ElevenLabs.ToolRequestModel => {
     const toEnums : string[] = [];
     contacts.forEach( c => {
         if( c.emailAddresses[0] && !toEnums.includes(c.emailAddresses[0]) )
@@ -118,7 +118,7 @@ export const getSendEmail = ( contacts:Contacts.Contact[] ) : ElevenLabs.ToolReq
 /**
  * guessState – attempt to determine the US state of the caller.
  */
-export const getGuessState = ( /*contacts:Contacts.Contact[]*/ ) : ElevenLabs.ToolRequestModel => {
+export const getGuessState = ( /*contacts:Contact[]*/ ) : ElevenLabs.ToolRequestModel => {
     return {
         toolConfig : {
             type        : "webhook",
@@ -148,7 +148,7 @@ export const getGuessState = ( /*contacts:Contacts.Contact[]*/ ) : ElevenLabs.To
 /**
  * getFAQAnswer – retrieve an FAQ answer for a question.
  */
-export const getFAQAnswer = ( contacts:Contacts.Contact[] ) : ElevenLabs.ToolRequestModel => {
+export const getFAQAnswer = ( contacts:Contact[] ) : ElevenLabs.ToolRequestModel => {
     return {
         toolConfig : {
             type        : "webhook",

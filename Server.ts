@@ -8,12 +8,9 @@ import * as ws                  from 'ws';
 
 import dayjs                    from './day-timezone';
 import Config                   from './Config';
-import * as Contacts            from './Contacts';
+import Contact                  from './Contact';
 import { ElevenLabsApi }        from './ElevenLabsApi';
-
-export interface RCExtension {
-
-}
+import * as RingCentral         from './RingCentral';
 
 export let server = {} as Server;
 
@@ -22,7 +19,7 @@ export default class Server {
     config                  : Readonly<Config>;
     ringCentral             : {
         platform            : ReturnType<RCSDK['platform']>;
-        extensionsDetails?  : Record<string,RCExtension>;
+        extensionsDetailsById?  : Record<string,RingCentral.ExtensionDetails>;
     };
     nmTransport             : (nodemailer.Transporter|undefined);
     wsByUrl                 : Record<string,ws.WebSocket>; 
@@ -49,18 +46,9 @@ export default class Server {
         return this;
     }
     private async initRingCentral() {
-        try {
-            const sdk      = new RCSDK(this.config.contacts.rc);
-            const platform = sdk.platform();
-            await platform.login(this.config.contacts.rc);
-            this.moduleLog(module.filename,1,`Successfully logged in to RingCentral platform with clientId=${this.config.contacts.rc.clientId}`);
-            return {
-                platform,
-            };
-        } 
-        catch( e ) {
-            throw Error(`Failed to initialize RingCentral platform: ${e}`);
-        }
+        return {
+            platform : await RingCentral.login(this.config.contacts.rc)
+        };
     }
     private initREPL() {
         if( this.config.replPort<=0 )
@@ -134,59 +122,85 @@ export default class Server {
         this.ban_vape_api_until_date = undefined;
         this.log(1,`VapeApi ban cleared`);
     }
-    async getContacts( warns?: string[] ) : Promise<Contacts.Contact[]> {
-        console.log({
-            'this.ringCentral': this.ringCentral,
-        })
+    async getContacts( warns?: string[] ) : Promise<Contact[]> {
+        if( !warns )
+            warns = [];
         const [
-            phoneNumbers,
+            phoneNumbersById,
             { 
-                extensionList,
-                extensionDetails,
+                extensions,
+                extensionDetailsById,
             }
         ] = await Promise.all([
-            this.ringCentral.platform.get("/restapi/v2/accounts/~/phone-numbers",{})
-                .then( res => res.json() )
-                .catch( err => {
-                    throw Error(`Failed to get phone numbers from RingCentral: ${err}`);
-                }),
-            this.ringCentral.platform.get("/restapi/v1.0/account/~/extension",{})
-                .then( res => res.json() )
-                .then( extensionList => {
+            RingCentral.getPhoneNumbers(this.ringCentral.platform).then( phoneNumbers => {
+                return phoneNumbers.reduce( (acc,phoneNumber) => {
+                    if( !phoneNumber.extension ) {
+                        warns?.push(`Phone number ${phoneNumber.phoneNumber} is not assigned to any extension, skipping`);
+                        return acc;
+                    }
+                    if( !acc[phoneNumber.extension.id] )
+                        acc[phoneNumber.extension.id] = [];
+                    acc[phoneNumber.extension.id].push(phoneNumber);
+                    return acc;
+                },{} as Record<string,RingCentral.PhoneNumber[]>);
+            }),
+            RingCentral.getExtensions(this.ringCentral.platform)
+                .then( extensions => {
                     // If extension details are available in the cache, use them
-                    if( this.ringCentral.extensionsDetails )
+                    if( this.ringCentral.extensionsDetailsById )
                         return {
-                            extensionList,
-                            extensionDetails : this.ringCentral.extensionsDetails 
+                            extensions,
+                            extensionDetailsById: this.ringCentral.extensionsDetailsById 
                         };
                     // Have to do this the hard way
-                    return Promise.all(
-                        (extensionList.records||[]).map( (ext:Record<string,any>) => {
-                            return this.ringCentral.platform.get(`/restapi/v1.0/account/~/extension/${ext.id}`,{})
-                                .then( res => res.json() )
-                                .catch( err => {
-                                    throw Error(`Failed to get extension details from RingCentral: ${err}`);
-                                });
-                        })
-                    ).then( extensionDetails => {
-                        return {
-                            extensionList,
-                            extensionDetails : extensionDetails.reduce( (acc,details) => {
+                    return RingCentral.getExtensionDetailsList(this.ringCentral.platform,extensions.map(ext=>String(ext.id)))
+                        .then( extensionDetailList => {
+                            this.ringCentral.extensionsDetailsById = extensionDetailList.reduce( (acc,details) => {
                                 acc[details.id] = details;
                                 return acc;
-                            },{} as Record<string,RCExtension>)
-                        }
-                    });
-                })
-                .catch( err => {
-                    throw Error(`Failed to get extensions from RingCentral: ${err}`);
+                            },{} as Record<string,RingCentral.ExtensionDetails>);
+                            return {
+                                extensions,
+                                extensionDetailsById: this.ringCentral.extensionsDetailsById
+                            }
+                        });
                 })
             ]);
-        console.log({
-            phoneNumbers,
-            extensionList,
-            extensionDetails,
-        })
-        throw Error(`Not implemented yet: need to correlate phone numbers with extensions to get the contacts list`);
+        const contacts = extensions.reduce( (acc,ext) => {
+            const details = extensionDetailsById[ext.id];
+            const name    = ext.name || 
+                details?.name || 
+                (ext.contact ? ext.contact.firstName + " " + ext.contact.lastName : undefined) ||
+                (details?.contact ? details.contact.firstName + " " + details.contact.lastName : undefined) ||
+                undefined;  
+            if( !name ) {
+                warns?.push(`Extension #${ext.id} (${name}) has no name, skipping`);
+                return acc;
+            }
+            if( ext.status !== 'Enabled' ) {
+                warns?.push(`Extension #${ext.id} (${name}) is not enabled (status=${ext.status}), skipping`);
+                return acc;
+            }
+            if( ext.hidden ) {
+                warns?.push(`Extension #${ext.id} (${name}) is hidden, skipping`);
+                return acc;
+            }
+            const phoneNumbers  = phoneNumbersById[ext.id]||[];
+            if( !phoneNumbers.length ) {
+                warns?.push(`Extension #${ext.id} (${name}) has no phone numbers, skipping`);
+                return acc;
+            }
+            acc.push({ 
+                name,
+                description     : undefined,
+                timeZone        : details.regionalSettings?.timezone?.name,
+                phoneNumbers    : phoneNumbers.map(pn=>pn.phoneNumber),
+                emailAddresses  : ext.contact?.email ? [ext.contact.email] : (details.contact?.email ? [details.contact.email] : []),
+                businessStartHour : this.config.contacts.businessStartHour ?? 9,
+                businessEndHour : this.config.contacts.businessEndHour ?? 18,
+            });
+            return acc;
+        }, [] as Contact[] );
+        return contacts;
     }
 }

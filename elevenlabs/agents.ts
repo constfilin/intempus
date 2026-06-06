@@ -1,6 +1,6 @@
 import { ElevenLabs } from '@elevenlabs/elevenlabs-js';
 
-import * as Contacts            from '../Contacts';
+import Contact                  from '../Contact';
 import { server }               from '../Server';
 
 import * as elevenLabsConsts    from './consts';
@@ -33,7 +33,7 @@ const _getAgentIds = ( agentsByName: Record<string,any>, agentNames:string[] ) :
         return { name, id: agent.agentId };
     });
 };
-const _getAsrKeywords = ( contacts:Contacts.Contact[] ) : string[] => {
+const _getAsrKeywords = ( contacts:Contact[] ) : string[] => {
     const keywords = Object.values(contacts
         .map(c => c.name.split(/\s+/))
         .flat()
@@ -73,7 +73,7 @@ const _getGroupExtensionTransfers = ( dflt:ElevenLabs.PhoneNumberTransfer[]=[] )
         return transfers;
     },dflt);
 }
-const _getContactTransfers = ( contacts:Contacts.Contact[] ) : ElevenLabs.PhoneNumberTransfer[] => {
+const _getContactTransfers = ( contacts:Contact[] ) : ElevenLabs.PhoneNumberTransfer[] => {
     return contacts.reduce( (transfers,c) => {
         const fullPhone = `+1${c.phoneNumbers[0]}`;
         if( !transfers.some(t => t.phoneNumber === fullPhone) ) {
@@ -178,7 +178,7 @@ const _getKeywordActionTable = ( propertyManagerAction:string ) : string => {
 // ---------------------------------------------------------------------------
 
 export const getMain = (
-    contacts    : Contacts.Contact[],
+    contacts    : Contact[],
     toolsByName : Record<string,ElevenLabs.Tool>,
     agentsByName? : Record<string,any>,
 ) : CreateAgentRequest => {
@@ -282,7 +282,7 @@ ${elevenLabsConsts.systemPromptFooter}`,
 };
 
 export const getUnkIntroduction = (
-    contacts    : Contacts.Contact[],
+    contacts    : Contact[],
     toolsByName : Record<string,ElevenLabs.Tool>,
     agentsByName? : Record<string,any>,
 ) : CreateAgentRequest => {
@@ -352,7 +352,7 @@ ${elevenLabsConsts.systemPromptFooter}`,
 };
 
 export const getUnkHOA = (
-    contacts    : Contacts.Contact[],
+    contacts    : Contact[],
     toolsByName : Record<string,ElevenLabs.Tool>,
     agentsByName? : Record<string,any>,
 ) : CreateAgentRequest => {
@@ -436,7 +436,7 @@ ${elevenLabsConsts.systemPromptFooter}`,
 };
 
 export const getUnkPropertyOwner = (
-    contacts    : Contacts.Contact[],
+    contacts    : Contact[],
     toolsByName : Record<string,ElevenLabs.Tool>,
     agentsByName? : Record<string,any>,
 ) : CreateAgentRequest => {
@@ -513,7 +513,7 @@ ${elevenLabsConsts.systemPromptFooter}`,
 };
 
 export const getFAQ = (
-    contacts    : Contacts.Contact[],
+    contacts    : Contact[],
     toolsByName : Record<string,ElevenLabs.Tool>,
     agentsByName? : Record<string,any>,
 ) : CreateAgentRequest => {
@@ -558,7 +558,7 @@ ${elevenLabsConsts.systemPromptFooter}`,
 };
 
 export const getUnkCallbackForm = (
-    contacts    : Contacts.Contact[],
+    contacts    : Contact[],
     toolsByName : Record<string,ElevenLabs.Tool>,
     agentsByName? : Record<string,any>,
 ) : CreateAgentRequest => {
@@ -612,7 +612,7 @@ ${elevenLabsConsts.systemPromptFooter}`,
 };
 
 export const getUnkDialByName = (
-    contacts    : Contacts.Contact[],
+    contacts    : Contact[],
     toolsByName : Record<string,ElevenLabs.Tool>,
     agentsByName? : Record<string,any>,
 ) : CreateAgentRequest => {
