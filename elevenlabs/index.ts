@@ -1,8 +1,9 @@
-import * as Contacts    from '../Contacts';
+import * as Contacts    from '../Contact';
 
-import * as agents  from './agents';
-import * as tools       from './tools';
 import { ElevenLabs } from '@elevenlabs/elevenlabs-js';
+import * as agents  from './agents';
+import * as tools   from './tools';
+import Contact      from '../Contact';
 
 export const agentsByName = {
     "Intempus Main"             : agents.getMain,
@@ -12,7 +13,7 @@ export const agentsByName = {
     "Intempus CallbackForm"     : agents.getUnkCallbackForm,
     "Intempus Introduction"     : agents.getUnkIntroduction,
 } as Record<string,(
-    contacts        : Contacts.Contact[],
+    contacts        : Contact[],
     toolsByName     : Record<string,ElevenLabs.Tool>,
     agentsByName?   : Record<string,any>,
 ) => ElevenLabs.conversationalAi.BodyCreateAgentV1ConvaiAgentsCreatePost>;
@@ -26,5 +27,5 @@ export const toolsByName = {
     'getInstructionsByPhone'    : tools.getInstructionsByPhone,
     'getTransferInstructions'   : tools.getTransferInstructions,
 } as unknown as Record<string,(
-    contacts        : Contacts.Contact[]
+    contacts        : Contact[]
 ) => ElevenLabs.ToolRequestModel>;

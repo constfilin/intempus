@@ -9,9 +9,15 @@ export default {
     simulatedPhoneNumber            : (process.env.SIMULATED_PHONE_NUMBER || ''),
     providerType                    : (process.env.PROVIDER_TYPE||'vapi'),
     contacts : {
-        spreadsheetId      : (process.env.SPREADSHEETID||'[hidden]'),
-        googleApiKey       : (process.env.GOOGLE_API_KEY||'[hidden]'),
-        worksheetName      : (process.env.WORKSHEET_NAME||'Contacts'),
+        rc : {
+            clientId        : (process.env.RC_CLIENT_ID||'[hidden]'),
+            clientSecret    : (process.env.RC_CLIENT_SECRET||'[hidden]'),
+            jwt             : (process.env.RC_JWT||'[hidden]'),
+            server          : (process.env.RC_SERVER||'https://platform.ringcentral.com'),
+            apiCallRateMs   : (process.env.RC_API_CALL_RATE_MS ? parseInt(process.env.RC_API_CALL_RATE_MS) : 500)
+        },
+        businessStartHour  : (process.env.BUSINESS_START_HOUR ? parseInt(process.env.BUSINESS_START_HOUR) : 9),   // hour of day in local time when business hours start
+        businessEndHour    : (process.env.BUSINESS_END_HOUR ? parseInt(process.env.BUSINESS_END_HOUR) : 17),     // hour of day in local time when business hours end
     },
     vapi                            : (((process.env.PROVIDER_TYPE||'vapi')==='vapi') ? {
         apiKey             : (process.env.VAPI_API_KEY||'[hidden]'),

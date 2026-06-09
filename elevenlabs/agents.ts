@@ -1,12 +1,9 @@
 import { ElevenLabs } from '@elevenlabs/elevenlabs-js';
 
-import * as Config              from '../Config';
-import * as Contacts            from '../Contacts';
+import Contact                  from '../Contact';
+import { server }               from '../Server';
 
 import * as elevenLabsConsts    from './consts';
-import * as tools               from './tools';
-import { TestRunMetadataTestType } from '@elevenlabs/elevenlabs-js/api';
-import { get } from 'node:http';
 
 ////////////////////////////////////////////////////////////////////////////////
 // helpers
@@ -36,7 +33,7 @@ const _getAgentIds = ( agentsByName: Record<string,any>, agentNames:string[] ) :
         return { name, id: agent.agentId };
     });
 };
-const _getAsrKeywords = ( contacts:Contacts.Contact[] ) : string[] => {
+const _getAsrKeywords = ( contacts:Contact[] ) : string[] => {
     const keywords = Object.values(contacts
         .map(c => c.name.split(/\s+/))
         .flat()
@@ -76,7 +73,7 @@ const _getGroupExtensionTransfers = ( dflt:ElevenLabs.PhoneNumberTransfer[]=[] )
         return transfers;
     },dflt);
 }
-const _getContactTransfers = ( contacts:Contacts.Contact[] ) : ElevenLabs.PhoneNumberTransfer[] => {
+const _getContactTransfers = ( contacts:Contact[] ) : ElevenLabs.PhoneNumberTransfer[] => {
     return contacts.reduce( (transfers,c) => {
         const fullPhone = `+1${c.phoneNumbers[0]}`;
         if( !transfers.some(t => t.phoneNumber === fullPhone) ) {
@@ -135,7 +132,6 @@ const _completeAgent = (
 ) : CreateAgentRequest => {
     // Build a complete ElevenLabs agent config from partial overrides.
     // This is the ElevenLabs counterpart of intempus/assistants.ts `_completeAssistant`.
-    const config = Config.get();
     //console.log(JSON.stringify(agent,null,4));
     //throw Error("!");
     return {
@@ -146,7 +142,7 @@ const _completeAgent = (
                 language    : agent.conversationConfig?.agent?.language ?? "en",
                 prompt: {
                     prompt      : agent.conversationConfig?.agent?.prompt?.prompt,
-                    llm         : config.elevenLabs!.model as ElevenLabs.Llm,
+                    llm         : server.config.elevenLabs!.model as ElevenLabs.Llm,
                     temperature : 0.3,
                     maxTokens   : 300,
                     toolIds     : agent.conversationConfig?.agent?.prompt?.toolIds,
@@ -156,8 +152,8 @@ const _completeAgent = (
                 },
             },
             tts: {
-                voiceId: config.elevenLabs!.voiceId,
-                expressiveMode: true
+                voiceId         : server.config.elevenLabs!.voiceId,
+                expressiveMode  : true
             },
             ...(agent.conversationConfig?.asr ? { asr: agent.conversationConfig.asr } : {}),
             ...(agent.conversationConfig?.languagePresets ? { languagePresets: agent.conversationConfig.languagePresets } : {}),
@@ -182,7 +178,7 @@ const _getKeywordActionTable = ( propertyManagerAction:string ) : string => {
 // ---------------------------------------------------------------------------
 
 export const getMain = (
-    contacts    : Contacts.Contact[],
+    contacts    : Contact[],
     toolsByName : Record<string,ElevenLabs.Tool>,
     agentsByName? : Record<string,any>,
 ) : CreateAgentRequest => {
@@ -286,7 +282,7 @@ ${elevenLabsConsts.systemPromptFooter}`,
 };
 
 export const getUnkIntroduction = (
-    contacts    : Contacts.Contact[],
+    contacts    : Contact[],
     toolsByName : Record<string,ElevenLabs.Tool>,
     agentsByName? : Record<string,any>,
 ) : CreateAgentRequest => {
@@ -330,6 +326,7 @@ ${elevenLabsConsts.systemPromptFooter}`,
                         toolIds     : _getToolIds(toolsByName,['sendEmail']),
                         builtInTools: {
                             // "Intempus Introduction" transfers to special group extensions (leasing, emergency, etc)
+                            // transferToAgent: ...
                             transferToNumber: _getSystemToolConfigOutput(_getGroupExtensionTransfers())
                         },
                     }
@@ -356,11 +353,10 @@ ${elevenLabsConsts.systemPromptFooter}`,
 };
 
 export const getUnkHOA = (
-    contacts    : Contacts.Contact[],
+    contacts    : Contact[],
     toolsByName : Record<string,ElevenLabs.Tool>,
     agentsByName? : Record<string,any>,
 ) : CreateAgentRequest => {
-    const config = Config.get();
     return _completeAgent(
         {
             name         : "Intempus HOA",
@@ -408,7 +404,7 @@ ${_joinSteps([
     "Ask for the name of the property",
     "Confirm both details back to the caller",
     `ONLY AFTER confirming the caller's name and the property name, send an email using the 'sendEmail' tool with:
-    - To: "${config.notificationEmailAddress||'mkhesin@intempus.net'}"
+    - To: "${server.config.notificationEmailAddress||'mkhesin@intempus.net'}"
     - Subject: "New Call to HOA: [Property Name] - From [Caller Name]"
     - Body: "A caller named [Caller Name] is inquiring about property [Property Name] and is asking about [Caller's Request]"`
 ])}
@@ -441,11 +437,10 @@ ${elevenLabsConsts.systemPromptFooter}`,
 };
 
 export const getUnkPropertyOwner = (
-    contacts    : Contacts.Contact[],
+    contacts    : Contact[],
     toolsByName : Record<string,ElevenLabs.Tool>,
     agentsByName? : Record<string,any>,
 ) : CreateAgentRequest => {
-    const config = Config.get();
     return _completeAgent(
         {
             name         : "Intempus PropertyOwner",
@@ -486,7 +481,7 @@ ${_joinSteps([
     "Ask for the name of the property",
     "Confirm both details back to the caller",
     `ONLY AFTER confirming the caller's name and the property name, send an email using the 'sendEmail' tool with:
-    - To: "${config.notificationEmailAddress||'mkhesin@intempus.net'}"
+    - To: "${server.config.notificationEmailAddress||'mkhesin@intempus.net'}"
     - Subject: "New Call to PropertyOwner: [Property Name] - From [Caller Name]"
     - Body: "A caller named [Caller Name] is inquiring about property [Property Name] and is asking about [Caller's Request]"`
 ])}
@@ -519,7 +514,7 @@ ${elevenLabsConsts.systemPromptFooter}`,
 };
 
 export const getFAQ = (
-    contacts    : Contacts.Contact[],
+    contacts    : Contact[],
     toolsByName : Record<string,ElevenLabs.Tool>,
     agentsByName? : Record<string,any>,
 ) : CreateAgentRequest => {
@@ -541,8 +536,8 @@ ${elevenLabsConsts.systemPromptFooter}`,
                         toolIds : [],
                         builtInTools: {
                             // "Intempus FAQ" transfers to both "Intempus Introduction" and special group extensions (maintenance, emergency, etc)
+                            transferToAgent:  _getTransferToAgent(_getAgentIds(agentsByName||{},["Intempus Introduction"])),
                             transferToNumber: _getSystemToolConfigOutput(_getGroupExtensionTransfers()),
-                            transferToAgent:  _getTransferToAgent(_getAgentIds(agentsByName||{},["Intempus Introduction"]))
                         },
                     }
                 },
@@ -564,11 +559,10 @@ ${elevenLabsConsts.systemPromptFooter}`,
 };
 
 export const getUnkCallbackForm = (
-    contacts    : Contacts.Contact[],
+    contacts    : Contact[],
     toolsByName : Record<string,ElevenLabs.Tool>,
     agentsByName? : Record<string,any>,
 ) : CreateAgentRequest => {
-    const config = Config.get();
     return _completeAgent(
         {
             name         : "Intempus CallbackForm",
@@ -585,7 +579,7 @@ ${_joinSteps([
     `Ask caller: "What is your first and last name?" and save the answer as 'name'.`,
     `Ask caller: "Would you like to leave us your email address" and if the caller responds affirmatively, then ask "Please provide your email address", re-confirm it and after the re-confirmation save the answer as 'emailAddress'.`,
     `If the caller confirms the information, then tell them: "Thank you for providing this information. A representative will reach out to you shortly." and send an email:
-        - To: "${config.notificationEmailAddress||'mkhesin@intempus.net'}"
+        - To: "${server.config.notificationEmailAddress||'mkhesin@intempus.net'}"
         - Subject: "New Call for CallbackForm: [Property Name] - From [Caller Name]"
         - Body: "A client {{clientType}} is interested in {{propertyInterest}}. Property address is {{propertyAddress}}. Location of interest is {{locationInterest}}. Client name is {{name}}, email address is {{emailAddress}}, phone number is {{customer.number}}.`,
 ])}
@@ -596,8 +590,8 @@ ${elevenLabsConsts.systemPromptFooter}`,
                         toolIds : _getToolIds(toolsByName,['sendEmail']),
                         builtInTools: {
                             // "Intempus CallbackForm" transfers to both "Intempus Introduction" and special group extensions (maintenance, emergency, etc)
+                            transferToAgent:  _getTransferToAgent(_getAgentIds(agentsByName||{},["Intempus Introduction"])),
                             transferToNumber: _getSystemToolConfigOutput(_getGroupExtensionTransfers()),
-                            transferToAgent:  _getTransferToAgent(_getAgentIds(agentsByName||{},["Intempus Introduction"]))
                         },
                     }
                 },
@@ -619,7 +613,7 @@ ${elevenLabsConsts.systemPromptFooter}`,
 };
 
 export const getUnkDialByName = (
-    contacts    : Contacts.Contact[],
+    contacts    : Contact[],
     toolsByName : Record<string,ElevenLabs.Tool>,
     agentsByName? : Record<string,any>,
 ) : CreateAgentRequest => {

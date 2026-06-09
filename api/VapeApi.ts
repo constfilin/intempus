@@ -50,7 +50,7 @@ const _callApi = async ( apiUrl:string, payload:Record<string,any> ): Promise<Re
         },
         body: JSON.stringify(payload)
     };
-    server.module_log(
+    server.moduleLog(
         module.filename,
         3,
         `Calling ${apiUrl} with`,

@@ -1,8 +1,6 @@
 import { ElevenLabs, ElevenLabsClient } from '@elevenlabs/elevenlabs-js';
-import jwt                      from 'jsonwebtoken';
 
-import * as Config              from './Config';
-import * as misc                from './misc';
+import { server }               from './Server';
 
 const dummyElevenLabsClient = {} as ElevenLabsClient;
 
@@ -19,10 +17,9 @@ type MyAgents = (typeof dummyElevenLabsClient.conversationalAi.agents) & {
 
 export class ElevenLabsApi extends ElevenLabsClient {
     constructor() {
-        const config = Config.get();
-        if( !config.elevenLabs )
-            throw Error(`Invalid provider type ${config.providerType}`);
-        super({ apiKey: config.elevenLabs!.apiKey });
+        if( !server.config.elevenLabs )
+            throw Error(`Invalid provider type ${server.config.providerType}`);
+        super({ apiKey: server.config.elevenLabs!.apiKey });
     }
     getTools() : MyTools {
         const tools = super.conversationalAi.tools as MyTools;

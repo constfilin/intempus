@@ -2,7 +2,8 @@ import commandLineArgs      from 'command-line-args';
 import { getCmdPromise }    from './getCmdPromise';
 import Server               from './Server';
 
-const cmd = () => {
+const cmd = async () => {
+    const server = await (new Server()).init();
     const argv = commandLineArgs([
         { name : 'cmd'            , alias: 'c', type: String },
         { name : 'id'             , alias: 'i', type: String },
@@ -19,8 +20,6 @@ const cmd = () => {
         { name : 'callDurationMinSecs', alias: 'd', type: Number },
         { name : 'exitCodeCount'      , alias: 'e', type: Boolean },
     ]);
-    // Needed for log initialization.
-    const server = new Server();
     getCmdPromise(argv)()
         .then( (r:any) => {
             if( argv.stringify )

@@ -2,38 +2,45 @@ import util                     from 'node:util';
 import net                      from 'node:net';
 import repl                     from 'node:repl';
 
-import * as GoogleSpreadsheet   from 'google-spreadsheet';
+import { SDK as RCSDK }         from '@ringcentral/sdk';
 import nodemailer               from 'nodemailer';
 import * as ws                  from 'ws';
 
 import dayjs                    from './day-timezone';
-import * as Config              from './Config';
-import * as Contacts            from './Contacts';
+import Config                   from './Config';
+import Contact                  from './Contact';
 import { ElevenLabsApi }        from './ElevenLabsApi';
+import * as RingCentral         from './RingCentral';
 
 export let server = {} as Server;
 
 export default class Server {
-
-    module_log_level        : Record<string,number> = {};
-    config                  : Readonly<Config.Config>;
-    contacts_sheet          : (GoogleSpreadsheet.GoogleSpreadsheetWorksheet|undefined);
-    nm_transport            : (nodemailer.Transporter|undefined);
-    ws_by_url               : Record<string,ws.WebSocket>; 
+    //
+    config                  : Readonly<Config>;
+    ringCentral             : RingCentral.RingCentral;
+    nmTransport             : (nodemailer.Transporter|undefined);
+    wsByUrl                 : Record<string,ws.WebSocket>; 
     elevenLabsApi           : ElevenLabsApi;
+    //
+    module_log_level        : Record<string,number> = {};
     ban_vape_api_until_date?: Date;
 
     constructor() {
-        this.config         = Config.get();
-        this.contacts_sheet = undefined; // Let's do it at the very first request
-        this.nm_transport   = nodemailer.createTransport(this.config.nm);
-        this.ws_by_url      = {};
-        this.elevenLabsApi  = new ElevenLabsApi();
-        this.init_repl();
         server = this;
+        this.config         = new Config(require('./config.js').default);
+        this.nmTransport    = nodemailer.createTransport(this.config.nm);
+        this.wsByUrl        = {};
+        this.elevenLabsApi  = new ElevenLabsApi();
+        this.ringCentral    = new RingCentral.RingCentral(this.config.contacts.rc);
+        this.initREPL();
         return this;
     }
-    init_repl() {
+    async init() : Promise<Server> {
+        await this.ringCentral.login();
+        this.moduleLog(module.filename,1,`Server initialized with provider ${this.config.providerType}`);
+        return this;
+    }
+    private initREPL() {
         if( this.config.replPort<=0 )
           return;
         // Follows https://gist.github.com/TooTallNate/2209310
@@ -67,7 +74,7 @@ export default class Server {
             host : "localhost"
         });        
     }
-    log_prefix( level:number ) {
+    private log_prefix( level:number ) {
         return `${dayjs().format("YYYY-MM-DD HH:mm:ss")}:${level}`;
     }
     log( level:number, ...args:any[] ) {
@@ -77,7 +84,7 @@ export default class Server {
         }
         return this;
     }
-    module_log( filename:string, level:number, ...args:any[] ) {
+    moduleLog( filename:string, level:number, ...args:any[] ) {
         const modname  = (filename.startsWith(this.config.path) ? filename.substring(this.config.path.length) : filename).replace(/^.*\/([^/\.]+)\.[^\.]+$/,"$1");
         const loglevel = (modname in this.module_log_level) ? this.module_log_level[modname] : this.config.loglevel;
         if( loglevel>=level ) {
@@ -87,9 +94,9 @@ export default class Server {
         return this;
     }    
     sendEmail(args:{ to:string, subject:string, text:string }) : Promise<void> {
-        if( !this.nm_transport )
+        if( !this.nmTransport )
             throw Error(`Transport is not initialized`);
-        return this.nm_transport.sendMail({
+        return this.nmTransport.sendMail({
             from    : this.config.nm.from,
             to      : args.to,
             subject : args.subject,
@@ -105,12 +112,57 @@ export default class Server {
         this.ban_vape_api_until_date = undefined;
         this.log(1,`VapeApi ban cleared`);
     }
-    async getContacts() : Promise<Contacts.Contact[]> {
-        if( !this.contacts_sheet ) {
-            this.contacts_sheet = await Contacts.getSheet(this.config.contacts.googleApiKey,this.config.contacts.spreadsheetId,this.config.contacts.worksheetName);
-            if( !this.contacts_sheet )
-                throw Error(`Cannot find sheet '${this.config.contacts.worksheetName}' in ${this.config.contacts.spreadsheetId}`);
-        }
-        return Contacts.getFromSheet(this.contacts_sheet);
+    async getContacts( warns?: string[] ) : Promise<Contact[]> {
+        if( !warns )
+            warns = [];
+        const [
+            phoneNumbersById,
+            extensions,
+        ] = await Promise.all([
+            this.ringCentral.getPhoneNumbers().then( phoneNumbers => {
+                return phoneNumbers.reduce( (acc,phoneNumber) => {
+                    if( !phoneNumber.extension ) {
+                        warns?.push(`Phone number ${phoneNumber.phoneNumber} is not assigned to any extension, skipping`);
+                        return acc;
+                    }
+                    if( !acc[phoneNumber.extension.id] )
+                        acc[phoneNumber.extension.id] = [];
+                    acc[phoneNumber.extension.id].push(phoneNumber);
+                    return acc;
+                },{} as Record<string,RingCentral.PhoneNumber[]>);
+            }),
+            this.ringCentral.getExtensions(['Enabled'],['User'])
+        ]);
+        const contacts = extensions.reduce( (acc,ext) => {
+            const name    = ext.name || 
+                (ext.contact ? ext.contact.firstName + " " + ext.contact.lastName : undefined) ||
+                undefined;  
+            if( !name ) {
+                warns?.push(`Extension #${ext.id} (${name}) has no name, skipping`);
+                return acc;
+            }
+            if( ext.status !== 'Enabled' ) {
+                warns?.push(`Extension #${ext.id} (${name}) is not enabled (status=${ext.status}), skipping`);
+                return acc;
+            }
+            if( ext.hidden ) {
+                warns?.push(`Extension #${ext.id} (${name}) is hidden, skipping`);
+                return acc;
+            }
+            const phoneNumbers  = phoneNumbersById[ext.id]||[];
+            if( !phoneNumbers.length ) {
+                warns?.push(`Extension #${ext.id} (${name}) has no phone numbers, skipping`);
+                return acc;
+            }
+            acc.push({ 
+                name,
+                description     : undefined,
+                phoneNumbers    : phoneNumbers.map(pn=>pn.phoneNumber),
+                emailAddresses  : ext.contact?.email ? [ext.contact.email] : [],
+            });
+            return acc;
+        }, [] as Contact[] );
+        //console.log(contacts.map(c=>`${c.name};${c.phoneNumbers.join(",")};${c.emailAddresses.join(",")}`).join("\n"))
+        return contacts;
     }
 }

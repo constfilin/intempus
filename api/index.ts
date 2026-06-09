@@ -17,7 +17,7 @@ const _callVapeApiWithBan = <T>( callName: string, call: () => Promise<T> ) : Pr
     const now = new Date();
     if( server.ban_vape_api_until_date && (now<(server.ban_vape_api_until_date||now)) ) {
         const remainingSec = Math.ceil((server.ban_vape_api_until_date.getTime() - now.getTime()) / 1000);
-        server.module_log(module.filename,1,`VapeApi banned: ${remainingSec}s remaining`);
+        server.moduleLog(module.filename,1,`VapeApi banned: ${remainingSec}s remaining`);
         return Promise.reject(new Error(`VapeApi is temporarily unavailable (ban expires in ${remainingSec}s)`));
     }
     const timeoutMs = (server.config.vapeApi.timeoutSec||10) * 1000;
@@ -28,17 +28,17 @@ const _callVapeApiWithBan = <T>( callName: string, call: () => Promise<T> ) : Pr
             if( callFinishedAt )
                 return resolve(0 as never);
             server.ban_vape_api_until_date = new Date(Date.now() + banPeriodMs);
-            server.module_log(module.filename,0,`VapeApi.${callName} timed out after ${server.config.vapeApi.timeoutSec}s, banning for ${server.config.vapeApi.banPeriodSec}s`);
+            server.moduleLog(module.filename,0,`VapeApi.${callName} timed out after ${server.config.vapeApi.timeoutSec}s, banning for ${server.config.vapeApi.banPeriodSec}s`);
             reject(new Error(`VapeApi timed out after ${server.config.vapeApi.timeoutSec}s`));
         }, timeoutMs);
     });
     return Promise.race([ 
         timeoutPromise, 
         call().then( t => {
-            server.module_log(module.filename,2,`VapeApi.${callName} took ${Date.now()-now.getTime()}ms`,t);
+            server.moduleLog(module.filename,2,`VapeApi.${callName} took ${Date.now()-now.getTime()}ms`,t);
             return t;
         }).catch( err => {
-            server.module_log(module.filename,1,`VapeApi.${callName} threw error after ${Date.now()-now.getTime()}ms:`,err);
+            server.moduleLog(module.filename,1,`VapeApi.${callName} threw error after ${Date.now()-now.getTime()}ms:`,err);
             throw err;
         }).finally( () => {
             callFinishedAt = new Date();
@@ -57,7 +57,7 @@ const sendResponse = (
         if( Array.isArray(response) ) {
             const elems_to_log = 3;
             const slice_to_log = response.slice(0,elems_to_log);
-            server.module_log(
+            server.moduleLog(
                 module.filename, 1, `${req.method} to ${req.originalUrl} (${duration_ms}ms):`,
                 slice_to_log,
                 `(${response.length} elems)`
@@ -67,7 +67,7 @@ const sendResponse = (
             let str_to_log = String(response);
             if( str_to_log==='[object Object]' )
                 str_to_log = JSON.stringify(response);
-            server.module_log(
+            server.moduleLog(
                 module.filename, 1, `${req.method} to ${req.originalUrl} (${duration_ms}ms):`,
                 str_to_log.substring(0,50),
                 `(${str_to_log?.length} chars)`
@@ -101,7 +101,7 @@ const sendResponse = (
     }
     if( util.types.isPromise(response) ) {
         return response.then(log_and_send_response).catch( err => {
-            server.module_log(module.filename,0,`exception on promise `,err);
+            server.moduleLog(module.filename,0,`exception on promise `,err);
             return log_and_send_response(err_to_response(err));
         });
     }
@@ -159,14 +159,18 @@ export default () => {
                 return c.name===canonicalName;
             });
             if( !contact )
-                throw Error(`Cannot find name '${canonicalName}' in ${server.config.contacts.worksheetName}`);
-            const djs    = dayjs().tz(contact.timeZone||'America/Los_Angeles');
-            const hour   = djs.hour();
-            const vmPrompt = contact.vmPrompt || `to describe its issue to '${canonicalName}'`;
-            const result =  ([0,6].includes(djs.day()) || (hour<contact.businessStartHour) || (hour>=contact.businessEndHour)) ?
-                `ask the user ${vmPrompt}, save its answer to a text and call sendEmail to ${contact.emailAddresses[0]} with subject "Call to ${contact.name} from ${phoneNumber ||'n/a'}" and that text` :
-                `ask user to confirm that the user wants to talk to '${canonicalName}'. If user confirms, then call redirectCall with +1${contact.phoneNumbers[0]}. Otherwise ask user again the user wants to speak to.`;
-            server.module_log(module.filename,2,`Handled 'dispatchCall'`,{ name },result);
+                throw Error(`Cannot find name '${canonicalName}' in contacts`);
+            // TODO:
+            // The "redirectCall" tool requires pre-registration of phone numbers a call be transferred to.
+            // (see getUnkDialByName). What happens if by the time a call to "dispatchCall" comes with the 
+            // a particular name, the phone number for that name has already changed?
+            //
+            // Wouldn't it be better to simply return the phone number the call is to be transferred to
+            // in the result of this tool like `getInstructionsByPhone` tools does in variable
+            // [ELabsConsts.phoneTransferDestinationVarName]? This way "transferToNumber" tool will work
+            // even if the phone number is not pre-registered 
+            const result =  `ask user to confirm that the user wants to talk to '${canonicalName}'. If user confirms, then call redirectCall with +1${contact.phoneNumbers[0]}. Otherwise ask user again who the user wants to speak to.`;
+            server.moduleLog(module.filename,2,`Handled 'dispatchCall'`,{ name },result);
             return result;
         });
     });
@@ -340,7 +344,7 @@ export default () => {
                         }
                     }
             }
-            server.module_log(module.filename,1,`No specific pre-call handling for agent '${agent.name}'`);
+            server.moduleLog(module.filename,1,`No specific pre-call handling for agent '${agent.name}'`);
             return {
             };
         });
@@ -366,13 +370,13 @@ export default () => {
                 // The customer requests an email to be sent to the customer if the call is transferred to a number
                 // First try the easy way
                 const serverMessage  = event.data as Record<string,any>;
-                server.module_log(module.filename,2,`Got assistant '${serverMessage.agent_name}' notification '${body_obj.type}'`,{
+                server.moduleLog(module.filename,2,`Got assistant '${serverMessage.agent_name}' notification '${body_obj.type}'`,{
                     status          : serverMessage.status,
                     summary         : serverMessage.analysis.transcript_summary,
                     agentsName      : serverMessage.agent_name,
                 });
                 if( getEmailToolCall(serverMessage)?.to === server.config.notificationEmailAddress ) {
-                    server.module_log(module.filename,2,`Summary email already sent to '${server.config.notificationEmailAddress}'`);
+                    server.moduleLog(module.filename,2,`Summary email already sent to '${server.config.notificationEmailAddress}'`);
                 }
                 else {
                     const summaryEmailText = `Call summary: ${serverMessage.analysis.transcript_summary.replace(/in\s*tempest/gi,'Intempus')}`;
@@ -381,9 +385,9 @@ export default () => {
                         subject :   `Call to ${serverMessage.agent_name} with status ${serverMessage.status}`,
                         text    :   summaryEmailText
                     }).then(() => {
-                        server.module_log(module.filename,2,`Sent email with call summary '${summaryEmailText}' to '${server.config.notificationEmailAddress}'`);
+                        server.moduleLog(module.filename,2,`Sent email with call summary '${summaryEmailText}' to '${server.config.notificationEmailAddress}'`);
                     }).catch( err => {
-                        server.module_log(module.filename,1,`Cannot send an email with call summary '${summaryEmailText}' to '${server.config.notificationEmailAddress}' (${err.message})`);
+                        server.moduleLog(module.filename,1,`Cannot send an email with call summary '${summaryEmailText}' to '${server.config.notificationEmailAddress}' (${err.message})`);
                     });
                 }
             }

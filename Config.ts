@@ -26,9 +26,15 @@ export class Config {
     simulatedPhoneNumber    : string;
     notificationEmailAddress: string;
     contacts:               {
-        googleApiKey        : string;
-        spreadsheetId       : string;
-        worksheetName       : string;
+        // For RingCentral integration        
+        rc : {
+            clientId        : string;
+            clientSecret    : string;
+            jwt             : string;
+            server          : string;
+            apiCallRateMs   : number;
+        }
+        // defaults
         businessStartHour?  : number;
         businessEndHour?    : number;
     }
@@ -99,11 +105,6 @@ export class Config {
             timeoutSec    : 10,
             banPeriodSec  : 60
         };
-        this.contacts  = {
-            googleApiKey  : '',
-            spreadsheetId : '',
-            worksheetName : '',
-        };
         
         Object.assign(this,params);
     }
@@ -115,14 +116,6 @@ export class Config {
         else
             throw Error(`Invalid provider type ${this.providerType}`);
     }
-}
-
-let _config = undefined as (Config|undefined);
-
-export const get = () : Config => {
-    if( !_config ) 
-        _config = new Config(require('./config.js').default);
-    return _config!;
 }
 
 export default Config;
