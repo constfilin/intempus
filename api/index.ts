@@ -160,12 +160,16 @@ export default () => {
             });
             if( !contact )
                 throw Error(`Cannot find name '${canonicalName}' in contacts`);
-            const djs    = dayjs().tz(contact.timeZone||'America/Los_Angeles');
-            const hour   = djs.hour();
-            const vmPrompt = contact.vmPrompt || `to describe its issue to '${canonicalName}'`;
-            const result =  ([0,6].includes(djs.day()) || (hour<contact.businessStartHour) || (hour>=contact.businessEndHour)) ?
-                `ask the user ${vmPrompt}, save its answer to a text and call sendEmail to ${contact.emailAddresses[0]} with subject "Call to ${contact.name} from ${phoneNumber ||'n/a'}" and that text` :
-                `ask user to confirm that the user wants to talk to '${canonicalName}'. If user confirms, then call redirectCall with +1${contact.phoneNumbers[0]}. Otherwise ask user again the user wants to speak to.`;
+            // TODO:
+            // The "redirectCall" tool requires pre-registration of phone numbers a call be transferred to.
+            // (see getUnkDialByName). What happens if by the time a call to "dispatchCall" comes with the 
+            // a particular name, the phone number for that name has already changed?
+            //
+            // Wouldn't it be better to simply return the phone number the call is to be transferred to
+            // in the result of this tool like `getInstructionsByPhone` tools does in variable
+            // [ELabsConsts.phoneTransferDestinationVarName]? This way "transferToNumber" tool will work
+            // even if the phone number is not pre-registered 
+            const result =  `ask user to confirm that the user wants to talk to '${canonicalName}'. If user confirms, then call redirectCall with +1${contact.phoneNumbers[0]}. Otherwise ask user again who the user wants to speak to.`;
             server.moduleLog(module.filename,2,`Handled 'dispatchCall'`,{ name },result);
             return result;
         });

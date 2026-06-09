@@ -18,7 +18,6 @@ export default class Server {
     //
     config                  : Readonly<Config>;
     ringCentral             : RingCentral.RingCentral;
-    extensionsDetailsById?  : Record<string,RingCentral.ExtensionDetails>;
     nmTransport             : (nodemailer.Transporter|undefined);
     wsByUrl                 : Record<string,ws.WebSocket>; 
     elevenLabsApi           : ElevenLabsApi;
@@ -118,10 +117,7 @@ export default class Server {
             warns = [];
         const [
             phoneNumbersById,
-            { 
-                extensions,
-                extensionDetailsById,
-            }
+            extensions,
         ] = await Promise.all([
             this.ringCentral.getPhoneNumbers().then( phoneNumbers => {
                 return phoneNumbers.reduce( (acc,phoneNumber) => {
@@ -136,33 +132,10 @@ export default class Server {
                 },{} as Record<string,RingCentral.PhoneNumber[]>);
             }),
             this.ringCentral.getExtensions(['Enabled'],['User'])
-                .then( extensions => {
-                    // If extension details are available in the cache, use them
-                    if( this.extensionsDetailsById )
-                        return {
-                            extensions,
-                            extensionDetailsById: this.extensionsDetailsById 
-                        };
-                    // Have to do this the hard way
-                    return this.ringCentral.getExtensionDetailsList(extensions.map(ext=>String(ext.id)))
-                        .then( extensionDetailList => {
-                            this.extensionsDetailsById = extensionDetailList.reduce( (acc,details) => {
-                                acc[details.id] = details;
-                                return acc;
-                            },{} as Record<string,RingCentral.ExtensionDetails>);
-                            return {
-                                extensions,
-                                extensionDetailsById: this.extensionsDetailsById
-                            }
-                        });
-                })
-            ]);
+        ]);
         const contacts = extensions.reduce( (acc,ext) => {
-            const details = extensionDetailsById[ext.id];
             const name    = ext.name || 
-                details?.name || 
                 (ext.contact ? ext.contact.firstName + " " + ext.contact.lastName : undefined) ||
-                (details?.contact ? details.contact.firstName + " " + details.contact.lastName : undefined) ||
                 undefined;  
             if( !name ) {
                 warns?.push(`Extension #${ext.id} (${name}) has no name, skipping`);
@@ -184,14 +157,12 @@ export default class Server {
             acc.push({ 
                 name,
                 description     : undefined,
-                timeZone        : details.regionalSettings?.timezone?.name,
                 phoneNumbers    : phoneNumbers.map(pn=>pn.phoneNumber),
-                emailAddresses  : ext.contact?.email ? [ext.contact.email] : (details.contact?.email ? [details.contact.email] : []),
-                businessStartHour : this.config.contacts.businessStartHour ?? 9,
-                businessEndHour : this.config.contacts.businessEndHour ?? 18,
+                emailAddresses  : ext.contact?.email ? [ext.contact.email] : [],
             });
             return acc;
         }, [] as Contact[] );
+        //console.log(contacts.map(c=>`${c.name};${c.phoneNumbers.join(",")};${c.emailAddresses.join(",")}`).join("\n"))
         return contacts;
     }
 }

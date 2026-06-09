@@ -326,6 +326,7 @@ ${elevenLabsConsts.systemPromptFooter}`,
                         toolIds     : _getToolIds(toolsByName,['sendEmail']),
                         builtInTools: {
                             // "Intempus Introduction" transfers to special group extensions (leasing, emergency, etc)
+                            // transferToAgent: ...
                             transferToNumber: _getSystemToolConfigOutput(_getGroupExtensionTransfers())
                         },
                     }
@@ -535,8 +536,8 @@ ${elevenLabsConsts.systemPromptFooter}`,
                         toolIds : [],
                         builtInTools: {
                             // "Intempus FAQ" transfers to both "Intempus Introduction" and special group extensions (maintenance, emergency, etc)
+                            transferToAgent:  _getTransferToAgent(_getAgentIds(agentsByName||{},["Intempus Introduction"])),
                             transferToNumber: _getSystemToolConfigOutput(_getGroupExtensionTransfers()),
-                            transferToAgent:  _getTransferToAgent(_getAgentIds(agentsByName||{},["Intempus Introduction"]))
                         },
                     }
                 },
@@ -589,8 +590,8 @@ ${elevenLabsConsts.systemPromptFooter}`,
                         toolIds : _getToolIds(toolsByName,['sendEmail']),
                         builtInTools: {
                             // "Intempus CallbackForm" transfers to both "Intempus Introduction" and special group extensions (maintenance, emergency, etc)
+                            transferToAgent:  _getTransferToAgent(_getAgentIds(agentsByName||{},["Intempus Introduction"])),
                             transferToNumber: _getSystemToolConfigOutput(_getGroupExtensionTransfers()),
-                            transferToAgent:  _getTransferToAgent(_getAgentIds(agentsByName||{},["Intempus Introduction"]))
                         },
                     }
                 },

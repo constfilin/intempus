@@ -124,7 +124,7 @@ export class RingCentral {
                return res.json();
             })
             .then( json => {
-                server.moduleLog(module.filename,2,`Got from '${url}', resetting call rate`,json);
+                server.moduleLog(module.filename,3,`Got from '${url}', resetting call rate`);
                 this.apiCallRateMs = this.config.apiCallRateMs;
                 return json as T;
             })
@@ -132,7 +132,7 @@ export class RingCentral {
                 if( !retryableErrorMessages.includes(err.message) )
                     throw Error(`Cannot call ${url} (${err.message})`);
                 // Do a random wait with exponential back-off
-                this.apiCallRateMs *= 1+Math.random();
+                this.apiCallRateMs = Math.min(60000+(5*Math.random()),this.apiCallRateMs*(1.5+Math.random()));
                 server.moduleLog(module.filename,3,`Got err '${err.message}' from '${url}', will re-try after ${this.apiCallRateMs}ms`);
                 return this.callApi(url,query);
             });
@@ -163,14 +163,11 @@ export class RingCentral {
     } ) {
         this.config   = config;
         this.apiCallRateMs = config.apiCallRateMs;
-        this.platform = {} as ReturnType<RCSDK['platform']>;
+        this.platform = (new RCSDK(this.config)).platform();
     }
     async login() : Promise<void> {
         try {
-            const sdk      = new RCSDK(this.config);
-            const platform = sdk.platform();
-            await platform.login(this.config);
-            this.platform = platform;
+            await this.platform.login(this.config);
         }
         catch( err ) {
             throw Error(`Failed to login to RingCentral platform: ${err}`);
