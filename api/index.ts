@@ -161,17 +161,21 @@ export default () => {
             if( !contact )
                 throw Error(`Cannot find name '${canonicalName}' in contacts`);
             // TODO:
-            // The "redirectCall" tool requires pre-registration of phone numbers a call be transferred to.
+            // The "transferToNumber" built-in tool requires pre-registration of phone numbers a call be transferred to.
             // (see getUnkDialByName). What happens if by the time a call to "dispatchCall" comes with the 
-            // a particular name, the phone number for that name has already changed?
+            // a particular name, the phone number for that name has already changed in RingCentral?
             //
             // Wouldn't it be better to simply return the phone number the call is to be transferred to
             // in the result of this tool like `getInstructionsByPhone` tools does in variable
             // [ELabsConsts.phoneTransferDestinationVarName]? This way "transferToNumber" tool will work
             // even if the phone number is not pre-registered 
-            const result =  `ask user to confirm that the user wants to talk to '${canonicalName}'. If user confirms, then call redirectCall with +1${contact.phoneNumbers[0]}. Otherwise ask user again who the user wants to speak to.`;
-            server.moduleLog(module.filename,2,`Handled 'dispatchCall'`,{ name },result);
-            return result;
+            const fullPhone    = misc.canonicalizePhone(contact.phoneNumbers[0]);
+            const instructions =  `ask user to confirm that the user wants to talk to '${canonicalName}'. If user confirms, then transfer the call to "+1${fullPhone}". Otherwise ask user again who the user wants to speak to.`;
+            server.moduleLog(module.filename,2,`Handled 'dispatchCall'`,{ name },instructions);
+            return {
+                [ELabsConsts.phoneTransferDestinationVarName] : `+1${fullPhone}`,
+                instructions
+            };
         });
     });
     router.post('/tool/guessState',express.json({type:'application/json'}),(req:expressCore.Request,res:expressCore.Response) => {
@@ -224,7 +228,7 @@ export default () => {
                         session_id          : sessionId,
                         user_first_name     : (user.user.first_name||''),
                         user_last_name      : (user.user.last_name||''),
-                        [ELabsConsts.phoneTransferDestinationVarName]   : user.contact_phone,
+                        [ELabsConsts.phoneTransferDestinationVarName]   : `+1${misc.canonicalizePhone(user.contact_phone||'')}`,
                         instructions        : `Greet the user by saying "Hi, ${user.user.first_name||'there'}!". Then follow the instructions in "QUESTIONS_AND_ANSWERS" section.`
                     };
                 }).catch( err => {
@@ -280,24 +284,26 @@ export default () => {
                     if( transferTarget.contact_phone )
                         return {
                             session_id          : sessionId,
-                            [ELabsConsts.phoneTransferDestinationVarName]  : transferTarget.contact_phone,
+                            [ELabsConsts.phoneTransferDestinationVarName]  : `+1${misc.canonicalizePhone(transferTarget.contact_phone||'')}`,
                             instructions        : `Follow the instructions in ${sectionName} section.`
                         };
                 } 
                 else {
                     // The caller wants to transfer the call to a specific phone number
-                    if( transferTarget.contact_name && transferTarget.contact_phone )
+                    if( transferTarget.contact_phone ) {
+                        const fullPhone = `+1${misc.canonicalizePhone(transferTarget.contact_phone)}`;
+                        if( transferTarget.contact_name )
+                            return {
+                                session_id          : sessionId,
+                                [ELabsConsts.phoneTransferDestinationVarName]   : fullPhone,
+                                instructions        : `Say 'Transferring the call to ${transferTarget.contact_name}.' and transfer the call to "${fullPhone}".`
+                            };
                         return {
                             session_id          : sessionId,
-                            [ELabsConsts.phoneTransferDestinationVarName]   : transferTarget.contact_phone,
-                            instructions        : `Say 'Transferring the call to ${transferTarget.contact_name}.' and call tool "transfer_to_number" passing "${transferTarget.contact_phone}" in "${ELabConsts.phoneTransferDestinationVarName}" dynamic variable.`
+                            [ELabsConsts.phoneTransferDestinationVarName]   : fullPhone,
+                            instructions        : `Transfer the call to "${fullPhone}".`
                         };
-                    if( transferTarget.contact_phone )
-                        return {
-                            session_id          : sessionId,
-                            [ELabsConsts.phoneTransferDestinationVarName]   : transferTarget.contact_phone,
-                            instructions        : `Call tool "transfer_to_number" passing "${transferTarget.contact_phone}" in "${ELabConsts.phoneTransferDestinationVarName}" dynamic variable.`
-                        };
+                    }
                 }
                 // Adding special word "Immediately" here to be able to tell this case from
                 // the exception handler case below.

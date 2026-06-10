@@ -1,4 +1,4 @@
-import { ElevenLabs } from '@elevenlabs/elevenlabs-js';
+import { ElevenLabs,default as foo } from '@elevenlabs/elevenlabs-js';
 
 import Contact                  from '../Contact';
 import { server }               from '../Server';
@@ -54,18 +54,15 @@ const _getAsrKeywords = ( contacts:Contact[] ) : string[] => {
         "Intempus",
     ];
 };
-/**
- * redirectCall – transfer the call to a phone number (group extension or
- * individual contact).
- *
- * Maps from the Vapi `transferCall` tool type to ElevenLabs `transfer_to_number`
- * system tool.
- */
+
 const _getGroupExtensionTransfers = ( dflt:ElevenLabs.PhoneNumberTransfer[]=[] ) : ElevenLabs.PhoneNumberTransfer[] => {
     return Object.entries(elevenLabsConsts.groupExtensions).reduce( (transfers,[name,number]) => {
         if( !transfers.some(t => t.phoneNumber === number) ) {
             transfers.push({
-                phoneNumber     : number,
+                transferDestination : {
+                    type        : "phone",
+                    phoneNumber : number
+                },
                 condition       : `Transfer the call when the caller needs ${name}`,
                 transferType    : "blind",
             });
@@ -73,22 +70,23 @@ const _getGroupExtensionTransfers = ( dflt:ElevenLabs.PhoneNumberTransfer[]=[] )
         return transfers;
     },dflt);
 }
-const _getContactTransfers = ( contacts:Contact[] ) : ElevenLabs.PhoneNumberTransfer[] => {
+const _getContactTransfers = ( contacts:Contact[], dflt:ElevenLabs.PhoneNumberTransfer[]=[] ) : ElevenLabs.PhoneNumberTransfer[] => {
     return contacts.reduce( (transfers,c) => {
         const fullPhone = `+1${c.phoneNumbers[0]}`;
         if( !transfers.some(t => t.phoneNumber === fullPhone) ) {
             transfers.push({
-                phoneNumber     : fullPhone,
-                condition       : c.description
-                    ? `Transfer the call to ${c.name} - ${c.description}`
-                    : `Transfer the call to ${c.name}`,
-                transferType    : "conference",
+                transferDestination : {
+                    type        : "phone",
+                    phoneNumber : fullPhone
+                },
+                condition       : `Transfer the call to ${c.name}`,
+                transferType    : "blind",
             });
         }
         return transfers;
-    },[] as ElevenLabs.PhoneNumberTransfer[]);
+    },dflt);
 }
-const _getSystemToolConfigOutput = ( transfers:ElevenLabs.PhoneNumberTransfer[] ) : ElevenLabs.SystemToolConfigOutput => {
+const _getTransferToNumber = ( transfers:ElevenLabs.PhoneNumberTransfer[] ) : ElevenLabs.SystemToolConfigOutput => {
     return {
         type        : "system",
         name        : "transfer_to_number",
@@ -230,7 +228,7 @@ ${elevenLabsConsts.systemPromptFooter}`,
                         builtInTools: {
                             // "Intempus Main" transfers only to "Intempus Introduction"
                             transferToAgent: _getTransferToAgent(_getAgentIds(agentsByName||{},['Intempus Introduction'])),
-                            transferToNumber: _getSystemToolConfigOutput(_getGroupExtensionTransfers([{
+                            transferToNumber: _getTransferToNumber(_getGroupExtensionTransfers([{
                                 transferType : "blind",
                                 transferDestination : {
                                     type        : "phone_dynamic_variable",
@@ -327,7 +325,7 @@ ${elevenLabsConsts.systemPromptFooter}`,
                         builtInTools: {
                             // "Intempus Introduction" transfers to special group extensions (leasing, emergency, etc)
                             // transferToAgent: ...
-                            transferToNumber: _getSystemToolConfigOutput(_getGroupExtensionTransfers())
+                            transferToNumber: _getTransferToNumber(_getGroupExtensionTransfers())
                         },
                     }
                 },
@@ -415,7 +413,7 @@ ${elevenLabsConsts.systemPromptFooter}`,
                         builtInTools: {
                             // "Intempus HOA" transfers to both "Intempus Introduction" and special group extensions (maintenance, emergency, etc)
                             transferToAgent:  _getTransferToAgent(_getAgentIds(agentsByName||{},["Intempus Introduction"])),
-                            transferToNumber: _getSystemToolConfigOutput(_getGroupExtensionTransfers())
+                            transferToNumber: _getTransferToNumber(_getGroupExtensionTransfers())
                         },
                     },
                 },
@@ -492,7 +490,7 @@ ${elevenLabsConsts.systemPromptFooter}`,
                         builtInTools: {
                             // "Intempus PropertyOwner" transfers to both "Intempus Introduction" and special group extensions (maintenance, emergency, etc)
                             transferToAgent:  _getTransferToAgent(_getAgentIds(agentsByName||{},["Intempus Introduction"])),
-                            transferToNumber: _getSystemToolConfigOutput(_getGroupExtensionTransfers())
+                            transferToNumber: _getTransferToNumber(_getGroupExtensionTransfers())
                         },
                     }
                 },
@@ -537,7 +535,7 @@ ${elevenLabsConsts.systemPromptFooter}`,
                         builtInTools: {
                             // "Intempus FAQ" transfers to both "Intempus Introduction" and special group extensions (maintenance, emergency, etc)
                             transferToAgent:  _getTransferToAgent(_getAgentIds(agentsByName||{},["Intempus Introduction"])),
-                            transferToNumber: _getSystemToolConfigOutput(_getGroupExtensionTransfers()),
+                            transferToNumber: _getTransferToNumber(_getGroupExtensionTransfers()),
                         },
                     }
                 },
@@ -591,7 +589,7 @@ ${elevenLabsConsts.systemPromptFooter}`,
                         builtInTools: {
                             // "Intempus CallbackForm" transfers to both "Intempus Introduction" and special group extensions (maintenance, emergency, etc)
                             transferToAgent:  _getTransferToAgent(_getAgentIds(agentsByName||{},["Intempus Introduction"])),
-                            transferToNumber: _getSystemToolConfigOutput(_getGroupExtensionTransfers()),
+                            transferToNumber: _getTransferToNumber(_getGroupExtensionTransfers()),
                         },
                     }
                 },
@@ -654,7 +652,22 @@ ${elevenLabsConsts.systemPromptFooter}`,
                         builtInTools: {
                             // "Intempus DialByName" transfers to both "Intempus Introduction" and all kinds of contacts.
                             transferToAgent:  _getTransferToAgent(_getAgentIds(agentsByName||{},["Intempus Introduction"])),
-                            transferToNumber: _getSystemToolConfigOutput(_getContactTransfers(contacts))
+                            transferToNumber: _getTransferToNumber(_getContactTransfers(
+                                // TODO:
+                                // Tool "dispatchCall" sets [elevenLabsConsts.phoneTransferDestinationVarName] to the phone
+                                // number where the call needs to be forwarded to. This phone number comes from RingCentral
+                                // in real-time. 
+                                // Why do we need to pass the contacts here? Perhaps we can remove this?!
+                                contacts,
+                                [{
+                                    transferType : "blind",
+                                    transferDestination : {
+                                        type        : "phone_dynamic_variable",
+                                        phoneNumber : elevenLabsConsts.phoneTransferDestinationVarName
+                                    },
+                                    condition    : ''
+                                }]
+                            ))
                         },                    
                     }
                 },

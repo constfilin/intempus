@@ -156,7 +156,6 @@ export default class Server {
             }
             acc.push({ 
                 name,
-                description     : undefined,
                 phoneNumbers    : phoneNumbers.map(pn=>pn.phoneNumber),
                 emailAddresses  : ext.contact?.email ? [ext.contact.email] : [],
             });
