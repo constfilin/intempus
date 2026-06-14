@@ -90,10 +90,6 @@ export const getSendEmail = ( contacts:Contacts.Contact[] ) : ElevenLabs.ToolReq
                 requestBodySchema : {
                     type        : "object",
                     properties  : {
-                        type : {
-                            type        : "string",
-                            constantValue : "sendEmail",
-                        },
                         to : {
                             type        : "string",
                             description : "The email address",
@@ -106,11 +102,31 @@ export const getSendEmail = ( contacts:Contacts.Contact[] ) : ElevenLabs.ToolReq
                         subject : {
                             type        : "string",
                             description : "The subject of the email",
+                        },
+                        callerName : {
+                            type        : "string",
+                            description : "Name of the caller",
+                            
+                        },
+                        propertyName : {
+                            type        : "string",
+                            description : "Name of the property the user is calling about"
                         }
                     },
-                    required : ["type","to","text","subject"]
+                    required : ["to","text","subject"]
                 }
-            }
+            },
+            assignments : [{
+                source          : "response",
+                dynamicVariable : 'callerName',
+                valuePath       : 'callerName',
+                sanitize        : false
+            },{
+                source          : "response",
+                dynamicVariable : 'propertyName',
+                valuePath       : 'propertyName',
+                sanitize        : false
+            }]
         }
     };
 };

@@ -137,11 +137,15 @@ export default () => {
         return sendResponse(req,res,async () => {
             if( req.get(server.config.web.header_name)!==server.config.provider.toolSecret )
                 throw Error(`Access denied`);
-            const { to, subject, text } = req.body as Record<string,any>;
+            const { to, subject, text, callerName, propertyName } = req.body as Record<string,any>;
             if( !to || !subject || !text )
                 throw Error(`Invalid arguments`);
             await server.sendEmail({ to, subject, text });
-            return `Email is sent to ${to}`;
+            return {
+                callerName,
+                propertyName,
+                result : `Email is sent to "${to}"`
+            };
         });
     });
     router.post('/tool/dispatchCall',express.json({type:'application/json'}),(req:expressCore.Request,res:expressCore.Response) => {

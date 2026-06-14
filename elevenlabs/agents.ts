@@ -4,9 +4,6 @@ import * as Config              from '../Config';
 import * as Contacts            from '../Contacts';
 
 import * as elevenLabsConsts    from './consts';
-import * as tools               from './tools';
-import { TestRunMetadataTestType } from '@elevenlabs/elevenlabs-js/api';
-import { get } from 'node:http';
 
 ////////////////////////////////////////////////////////////////////////////////
 // helpers
@@ -409,7 +406,7 @@ ${_joinSteps([
     "Confirm both details back to the caller",
     `ONLY AFTER confirming the caller's name and the property name, send an email using the 'sendEmail' tool with:
     - To: "${config.notificationEmailAddress||'mkhesin@intempus.net'}"
-    - Subject: "New call to HOA from @{{system__caller_id}}: [Property Name] - From [Caller Name]"
+    - Subject: "New call to HOA from {{system__caller_id}}: [Property Name] - From [Caller Name]"
     - Body: "A caller from {{system__caller_id}} is inquiring about property [Property Name] and is asking about [Caller's Request]."`
 ])}
 </EMAILING_STEPS>
