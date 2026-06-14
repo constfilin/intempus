@@ -410,7 +410,7 @@ ${_joinSteps([
     `ONLY AFTER confirming the caller's name and the property name, send an email using the 'sendEmail' tool with:
     - To: "${config.notificationEmailAddress||'mkhesin@intempus.net'}"
     - Subject: "New Call to HOA: [Property Name] - From [Caller Name]"
-    - Body: "A caller named [Caller Name] is inquiring about property [Property Name] and is asking about [Caller's Request]"`
+    - Body: "A caller named [Caller Name]@{{caller_id}} is inquiring about property [Property Name] and is asking about [Caller's Request]."`
 ])}
 </EMAILING_STEPS>
 
@@ -488,7 +488,7 @@ ${_joinSteps([
     `ONLY AFTER confirming the caller's name and the property name, send an email using the 'sendEmail' tool with:
     - To: "${config.notificationEmailAddress||'mkhesin@intempus.net'}"
     - Subject: "New Call to PropertyOwner: [Property Name] - From [Caller Name]"
-    - Body: "A caller named [Caller Name] is inquiring about property [Property Name] and is asking about [Caller's Request]"`
+    - Body: "A caller named [Caller Name]@{{caller_id}} is inquiring about property [Property Name] and is asking about [Caller's Request]"`
 ])}
 </EMAILING_STEPS>
 
