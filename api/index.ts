@@ -385,7 +385,7 @@ export default () => {
                     // util.promisify does not work here because ejs.renderFile takes multiple params
                     // TODO: figure out how to leverage util.promisify
                     return new Promise((resolve,reject) => {
-                        const fullFileName = path.join(server.config.path,"notifications","postCallSummary",shortFileName);
+                        const fullFileName = path.join(server.config.path,"notifications","posxtCallSummary",shortFileName);
                         ejs.renderFile(fullFileName,ejsData,{},(err,str) => {
                             if( err ) {
                                 server.module_log(module.filename,1,`Cannot render '${fullFileName}' (${err.message})`)
@@ -444,15 +444,18 @@ ${ejsData.transcript.map( t => {
 <body>
 </html>`)
                 ]);
-                server.module_log(module.filename,2,`Got assistant '${serverMessage.agent_name}' notification '${body_obj.type}'`,{
+                const logPayload = {
                     status          : serverMessage.status,
                     agentsName      : serverMessage.agent_name,
                     callSummary,
                     callData,
-                    emailSubject,
-                    emailText,
-                    emailHtml
-                });
+                    emailSubject
+                } as Record<string,any>;
+                if( server.config.loglevel>2 ) {
+                    logPayload.emailText = emailText;
+                    logPayload.emailHtml = emailHtml;
+                }
+                server.module_log(module.filename,2,`Got assistant '${serverMessage.agent_name}' notification '${body_obj.type}'`,logPayload);
                 server.sendEmail({
                     to      : callData.emailAddress,
                     subject : emailSubject,
