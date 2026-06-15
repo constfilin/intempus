@@ -46,7 +46,7 @@ const _callVapeApiWithBan = <T>( callName: string, call: () => Promise<T> ) : Pr
         })
     ]);
 };
-ELSerialization
+
 const sendResponse = ( 
     req     : expressCore.Request, 
     res     : expressCore.Response, 
