@@ -63,67 +63,6 @@ export const getDispatchCall = ( contacts:Contacts.Contact[] ) : ElevenLabs.Tool
     };
 };
 
-export const getSendEmail = ( contacts:Contacts.Contact[] ) : ElevenLabs.ToolRequestModel => {
-    const toEnums : string[] = [];
-    contacts.forEach( c => {
-        if( c.emailAddresses[0] && !toEnums.includes(c.emailAddresses[0]) )
-            toEnums.push(c.emailAddresses[0]);
-    });
-    return {
-        toolConfig : {
-            type        : "webhook",
-            name        : "sendEmail",
-            description : "Sending Email",
-            responseTimeoutSecs : 30,
-            ..._getToolCallSound(),
-            apiSchema : {
-                url     : _getToolUrl("sendEmail"),
-                method  : "POST",
-                requestHeaders  : _getWebhookHeaders(),
-                requestBodySchema : {
-                    type        : "object",
-                    properties  : {
-                        to : {
-                            type        : "string",
-                            description : "The email address",
-                            enum        : toEnums,
-                        },
-                        text : {
-                            type        : "string",
-                            description : "The body of the email",
-                        },
-                        subject : {
-                            type        : "string",
-                            description : "The subject of the email",
-                        },
-                        callerName : {
-                            type        : "string",
-                            description : "Name of the caller",
-                            
-                        },
-                        propertyId : {
-                            type        : "string",
-                            description : "Identifier or name of the property the user is calling about. Should look like a street address."
-                        }
-                    },
-                    required : ["to","text","subject"]
-                }
-            },
-            assignments : [{
-                source          : "response",
-                dynamicVariable : 'callerName',
-                valuePath       : 'callerName',
-                sanitize        : false
-            },{
-                source          : "response",
-                dynamicVariable : 'propertyId',
-                valuePath       : 'propertyId',
-                sanitize        : false
-            }]
-        }
-    };
-};
-
 export const getGuessState = ( /*contacts:Contacts.Contact[]*/ ) : ElevenLabs.ToolRequestModel => {
     return {
         toolConfig : {

@@ -108,22 +108,6 @@ const sendResponse = (
     }
     return log_and_send_response(response);
 }
-const getEmailToolCall = ( serveMessage: Record<string,any> ) : (Record<string,any>|undefined) => {
-    const transcript = serveMessage?.transcript as Record<string,any>[];
-    if( !Array.isArray(transcript) )
-        return undefined;
-    for( const entry of transcript ) {
-        const toolCalls = entry.tool_calls as Record<string,any>[];
-        if( !Array.isArray(toolCalls) )
-            continue;
-        const emailToolCall = toolCalls.find( tc => tc.tool_name === 'sendEmail' );
-        if( emailToolCall && (emailToolCall.tool_has_been_called??true) ) {
-            const params = emailToolCall.params_as_json;
-            return (typeof params === 'string') ? misc.jsonParse(params,undefined) : params;
-        }
-    }
-    return undefined;
-}
 const guessState = ( phoneNumber:string ) : string => {
     // Guess the state from the phone number
     const re = /^(\+1)?(\d{3})\d{7}/;

@@ -20,7 +20,6 @@ export const agentsByName = {
 //only accepts webhook tools, system tools need to be directly embedded into the agent definition
 export const toolsByName = {
     'dispatchCall'              : tools.getDispatchCall,
-    'sendEmail'                 : tools.getSendEmail,
     'guessState'                : tools.getGuessState,
     'getFAQAnswer'              : tools.getFAQAnswer,
     'getInstructionsByPhone'    : tools.getInstructionsByPhone,
