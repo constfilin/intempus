@@ -378,6 +378,7 @@ export default () => {
                 const emailSubject  = `${serverMessage.analysis?.call_summary_title||`Call to ${serverMessage.agent_name}`} with status ${serverMessage.status}`
                 const ejsData = {
                     serverMessage,
+                    callSummary,
                     callData,
                     transcript : serverMessage.transcript.filter(t=>(!!t.message)),
                 };
