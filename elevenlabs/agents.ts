@@ -165,6 +165,7 @@ const _getKeywordActionTable = ( propertyManagerAction:string ) : string => {
         | Emergency | Tell "Forwarding to emergency line" and forward the call to ${elevenLabsConsts.groupExtensions.emergency.phoneNumber} |
         | Finance, Accounting, Payments, Accounts Payable, Account Receivable | Tell "Forwarding to finance" and forward the call to ${elevenLabsConsts.groupExtensions.finance.phoneNumber} |
         | Operator, Representative, Customer Service | Clarify which department the caller wants to speak to (leasing/maintenance/finance/etc) and route the call to that department |
+        | Dial by name | Tell "Forwarding you to dial by name directory" and forward the call to "Intempus DialByName" agent. | 
         | Property Manager | ${propertyManagerAction} |
         | Sales | Tell "Forwarding to sales" and forward the call to ${elevenLabsConsts.groupExtensions.sales.phoneNumber} |`;
 }
@@ -276,7 +277,7 @@ ${elevenLabsConsts.systemPromptFooter}`,
     );
 };
 
-export const getUnkIntroduction = (
+export const getIntroduction = (
     contacts    : Contacts.Contact[],
     toolsByName : Record<string,ElevenLabs.Tool>,
     agentsByName? : Record<string,any>,
@@ -346,7 +347,7 @@ ${elevenLabsConsts.systemPromptFooter}`,
     );
 };
 
-export const getUnkHOA = (
+export const getHOA = (
     contacts    : Contacts.Contact[],
     toolsByName : Record<string,ElevenLabs.Tool>,
     agentsByName? : Record<string,any>,
@@ -428,7 +429,7 @@ ${elevenLabsConsts.systemPromptFooter}`,
     );
 };
 
-export const getUnkPropertyOwner = (
+export const getPropertyOwner = (
     contacts    : Contacts.Contact[],
     toolsByName : Record<string,ElevenLabs.Tool>,
     agentsByName? : Record<string,any>,
@@ -548,7 +549,7 @@ ${elevenLabsConsts.systemPromptFooter}`,
     );
 };
 
-export const getUnkCallbackForm = (
+export const getCallbackForm = (
     contacts    : Contacts.Contact[],
     toolsByName : Record<string,ElevenLabs.Tool>,
     agentsByName? : Record<string,any>,
@@ -600,7 +601,7 @@ ${elevenLabsConsts.systemPromptFooter}`,
     );
 };
 
-export const getUnkDialByName = (
+export const getDialByName = (
     contacts    : Contacts.Contact[],
     toolsByName : Record<string,ElevenLabs.Tool>,
     agentsByName? : Record<string,any>,

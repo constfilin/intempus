@@ -6,11 +6,11 @@ import { ElevenLabs } from '@elevenlabs/elevenlabs-js';
 
 export const agentsByName = {
     "Intempus Main"             : agents.getMain,
-    "Intempus HOA"              : agents.getUnkHOA,
-    "Intempus PropertyOwner"    : agents.getUnkPropertyOwner,
-    "Intempus DialByName"       : agents.getUnkDialByName,
-    "Intempus CallbackForm"     : agents.getUnkCallbackForm,
-    "Intempus Introduction"     : agents.getUnkIntroduction,
+    "Intempus HOA"              : agents.getHOA,
+    "Intempus PropertyOwner"    : agents.getPropertyOwner,
+    "Intempus DialByName"       : agents.getDialByName,
+    "Intempus CallbackForm"     : agents.getCallbackForm,
+    "Intempus Introduction"     : agents.getIntroduction,
 } as Record<string,(
     contacts        : Contacts.Contact[],
     toolsByName     : Record<string,ElevenLabs.Tool>,
