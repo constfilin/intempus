@@ -385,7 +385,7 @@ export default () => {
                     // util.promisify does not work here because ejs.renderFile takes multiple params
                     // TODO: figure out how to leverage util.promisify
                     return new Promise((resolve,reject) => {
-                        const fullFileName = path.join(server.config.path,"notifications","posxtCallSummary",shortFileName);
+                        const fullFileName = path.join(server.config.path,"notifications","postCallSummary",shortFileName);
                         ejs.renderFile(fullFileName,ejsData,{},(err,str) => {
                             if( err ) {
                                 server.module_log(module.filename,1,`Cannot render '${fullFileName}' (${err.message})`)
