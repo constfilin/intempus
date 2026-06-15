@@ -144,7 +144,6 @@ export default () => {
             if( req.get(server.config.web.header_name)!==server.config.provider.toolSecret )
                 throw Error(`Access denied`);
             const { name } = req.body as Record<string,any>;
-            const phoneNumber =  server.config.simulatedPhoneNumber || req.body.phoneNumber as string;
             if( !name )
                 throw Error(`Invalid arguments`);
             const contacts = await server.getContacts();

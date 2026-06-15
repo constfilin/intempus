@@ -30,7 +30,6 @@ const _getToolCallSound = () : Partial<ElevenLabs.WebhookToolConfigInput> => {
 // ---------------------------------------------------------------------------
 // Webhook tools  (server-side function calls)
 // ---------------------------------------------------------------------------
-
 export const getDispatchCall = ( contacts:Contacts.Contact[] ) : ElevenLabs.ToolRequestModel => {
     return {
         toolConfig : {
