@@ -398,7 +398,7 @@ ${_joinSteps([
     "Ask for the caller's name",
     "Ask for the name of the property",
     "Confirm both details back to the caller",
-    `ONLY AFTER confirming the caller's name and the property name, call 'setVariables' tool with emailAddress set to "${config.notificationEmailAddress||'mkhesin@intempus.net'}".`
+    `ONLY AFTER confirming the caller's name and the property name, call 'setVariables' tool with emailAddress equal "${config.notificationEmailAddress||'mkhesin@intempus.net'}".`
 ])}
 </EMAILING_STEPS>
 
@@ -473,7 +473,7 @@ ${_joinSteps([
     "Ask for the caller's name",
     "Ask for the name of the property",
     "Confirm both details back to the caller",
-    `ONLY AFTER confirming the caller's name and the property name, call tool 'setVariables' tool with emailAddress set to "${config.notificationEmailAddress||'mkhesin@intempus.net'}"`
+    `ONLY AFTER confirming the caller's name and the property name, call tool 'setVariables' tool with emailAddress equal "${config.notificationEmailAddress||'mkhesin@intempus.net'}"`
 ])}
 </EMAILING_STEPS>
 
@@ -569,7 +569,7 @@ ${_joinSteps([
     `If the caller is looking to rent their property, ask: "What is the address of your property" and save the answer as 'propertyAddress'. Otherwise ask: "What state, county or zip code you would like your to live in?" and save the answer as 'locationInterest'.`,
     `Ask caller: "What is your first and last name?" and save the answer as 'name'.`,
     `Ask caller: "Would you like to leave us your email address" and if the caller responds affirmatively, then ask "Please provide your email address", re-confirm it and after the re-confirmation save the answer as 'emailAddress'.`,
-    `If the caller confirms the information, then tell them: "Thank you for providing this information. A representative will reach out to you shortly." and call tool 'setVariables' with emailAddress set to "${config.notificationEmailAddress||'mkhesin@intempus.net'}"`
+    `If the caller confirms the information, then tell them: "Thank you for providing this information. A representative will reach out to you shortly." and call tool 'setVariables' with emailAddress equal "${config.notificationEmailAddress||'mkhesin@intempus.net'}"`
 ])}
 </TASKS>
 

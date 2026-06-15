@@ -157,7 +157,7 @@ export default () => {
             const hour   = djs.hour();
             const vmPrompt = contact.vmPrompt || `to describe its issue to '${canonicalName}'`;
             const result =  ([0,6].includes(djs.day()) || (hour<contact.businessStartHour) || (hour>=contact.businessEndHour)) ?
-                `ask the user ${vmPrompt}, save its answer to a text and call tool "setVariables" with emailAddress set to "${contact.emailAddresses[0]}" and callReason set to that text` :
+                `ask the user ${vmPrompt}, save its answer to a text and call tool "setVariables" with emailAddress equal "${contact.emailAddresses[0]}" and callReason set to that text` :
                 `ask user to confirm that the user wants to talk to '${canonicalName}'. If user confirms, then transfer the call to +1${contact.phoneNumbers[0]}. Otherwise ask user again the user wants to speak to.`;
             server.module_log(module.filename,2,`Handled 'dispatchCall'`,{ name },result);
             return result;
@@ -373,16 +373,8 @@ export default () => {
                 },{
                     emailAddress : (server.config.notificationEmailAddress||'mkhesin@intempus.net')
                 } as Record<string,string>);
-                server.module_log(module.filename,2,`Got assistant '${serverMessage.agent_name}' notification '${body_obj.type}'`,{
-                    status          : serverMessage.status,
-                    agentsName      : serverMessage.agent_name,
-                    callSummary,
-                    callData
-                });
-                server.sendEmail({
-                    to      :   callData.emailAddress,
-                    subject :   `${serverMessage.analysis?.call_summary_title||`Call to ${serverMessage.agent_name}`} with status ${serverMessage.status}`,
-                    text    :   `Summary:\n
+                const emailSubject  = `${serverMessage.analysis?.call_summary_title||`Call to ${serverMessage.agent_name}`} with status ${serverMessage.status}`
+                const emailText     = `Summary:\n
 ${callSummary}\n
 \n
 Call Data:\n
@@ -393,11 +385,23 @@ ${Object.entries(callData).map(([name,value]) => {
 Transcript:\n
 ${serverMessage.transcript.filter( t=>(!!t.message)).map( t => {
     return `At ${t.time_in_call_secs}s ${t.role}: ${t.message}`;
-}).join("\n")}\n`
+}).join("\n")}\n`;
+                server.module_log(module.filename,2,`Got assistant '${serverMessage.agent_name}' notification '${body_obj.type}'`,{
+                    status          : serverMessage.status,
+                    agentsName      : serverMessage.agent_name,
+                    callSummary,
+                    callData,
+                    emailSubject,
+                    emailText
+                });
+                server.sendEmail({
+                    to      :   callData.emailAddress,
+                    subject :   emailSubject,
+                    text    :   emailText
                 }).then(() => {
-                    server.module_log(module.filename,2,`Sent email with call summary '${callSummary}' to '${server.config.notificationEmailAddress}'`);
+                    server.module_log(module.filename,2,`Sent email with call summary '${callSummary}' to '${callData.emailAddress}'`);
                 }).catch( err => {
-                    server.module_log(module.filename,1,`Cannot send an email with call summary '${callSummary}' to '${server.config.notificationEmailAddress}' (${err.message})`);
+                    server.module_log(module.filename,1,`Cannot send an email with call summary '${callSummary}' to '${callData.emailAddress}' (${err.message})`);
                 });
             }
         });
