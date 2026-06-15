@@ -165,7 +165,7 @@ const _getKeywordActionTable = ( propertyManagerAction:string ) : string => {
         | Emergency | Tell "Forwarding to emergency line" and forward the call to ${elevenLabsConsts.groupExtensions.emergency.phoneNumber} |
         | Finance, Accounting, Payments, Accounts Payable, Account Receivable | Tell "Forwarding to finance" and forward the call to ${elevenLabsConsts.groupExtensions.finance.phoneNumber} |
         | Operator, Representative, Customer Service | Clarify which department the caller wants to speak to (leasing/maintenance/finance/etc) and route the call to that department |
-        | Dial by name | Tell "Forwarding you to dial by name directory" and forward the call to "Intempus DialByName" agent. | 
+        | Dial by name | Assume that the user wants to reach someone by name, say "Forwarding you to dial by name directory" and forward the call to "Intempus DialByName" agent. | 
         | Property Manager | ${propertyManagerAction} |
         | Sales | Tell "Forwarding to sales" and forward the call to ${elevenLabsConsts.groupExtensions.sales.phoneNumber} |`;
 }
@@ -622,8 +622,10 @@ export const getDialByName = (
                         prompt : `<TASKS>
 ${_joinSteps([
     `Your main task is to assist callers in reaching the appropriate contact within Intempus Realty by name.`,
+    `Do not redirect to another agent unless *explicitly* requested by the caller`,
     `Greet the caller by saying "You reach the Intempus Realty Dial By Name directory".`,
-    `Ask the caller for the name of the person they wish to reach and make sure that this name is mentioned in CALLROUTING section.,
+    `Ask the caller for the name of the person they wish to reach and make sure that this name is mentioned in CALLROUTING section.
+       * Use fuzzy matching and alternative name spelling to find person names in CALLROUTING section.
        * If it is not mentioned, politely inform the caller that the name was not found and ask them to repeat or provide additional details.`,
     `Once you have the contact name, ask for the property name/address that the call is regarding.`,
     `Then ask for the caller's name.`,
