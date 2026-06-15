@@ -1,9 +1,11 @@
 import util                 from 'node:util';
+import path                 from 'node:path';
 
 import express              from 'express';
 import * as expressCore     from 'express-serve-static-core';
 import { ElevenLabs }       from '@elevenlabs/elevenlabs-js';
 import * as ELSerialization from '@elevenlabs/elevenlabs-js/serialization';
+import ejs                  from 'ejs';
 
 import { server }           from '../Server';
 import { getCmdPromise }    from '../getCmdPromise';
@@ -374,30 +376,88 @@ export default () => {
                     emailAddress : (server.config.notificationEmailAddress||'mkhesin@intempus.net')
                 } as Record<string,string>);
                 const emailSubject  = `${serverMessage.analysis?.call_summary_title||`Call to ${serverMessage.agent_name}`} with status ${serverMessage.status}`
-                const emailText     = `Summary:\n
-${callSummary}\n
-\n
-Call Data:\n
-${Object.entries(callData).map(([name,value]) => {
+                const ejsData = {
+                    serverMessage,
+                    callData,
+                    transcript : serverMessage.transcript.filter(t=>(!!t.message)),
+                };
+                const getRenderFilePromise = ( shortFileName:string, ejsData:Record<string,any>, dflt:string ) : Promise<string> => {
+                    // util.promisify does not work here because ejs.renderFile takes multiple params
+                    // TODO: figure out how to leverage util.promisify
+                    return new Promise((resolve,reject) => {
+                        const fullFileName = path.join(server.config.path,"notifications","postCallSummary",shortFileName);
+                        ejs.renderFile(fullFileName,ejsData,{},(err,str) => {
+                            if( err ) {
+                                server.module_log(module.filename,1,`Cannot render '${fullFileName}' (${err.message})`)
+                                return resolve(dflt);
+                            }
+                            return resolve(str);
+                        });
+                    });
+                }
+                const [
+                    emailText,
+                    emailHtml
+                ] = await Promise.all([
+                    getRenderFilePromise("text.ejs",ejsData,`Summary:
+${callSummary}
+
+Call Data:
+${Object.entries(ejsData.callData).map(([name,value]) => {
     return `${name} : ${value}`;
 }).join("\n")}
-\n
-Transcript:\n
-${serverMessage.transcript.filter( t=>(!!t.message)).map( t => {
+
+Transcript:
+${ejsData.transcript.map( t => {
     return `At ${t.time_in_call_secs}s ${t.role}: ${t.message}`;
-}).join("\n")}\n`;
+}).join("\n")}`),
+                    getRenderFilePromise("html.ejs",ejsData,`
+<html>
+<body>
+<p>${callSummary}</p>
+<p><strong>Call Data</strong>:</p>
+<table>
+<tbody>
+    <tr>
+        <td><strong>Name</strong></td>
+        <td><strong>Value</strong></td>
+    </tr>
+${Object.entries(ejsData.callData).map(([name,value]) => {
+    return `<tr><td>${name}</td><td>${value}</td></tr>`;
+}).join("\n")}        
+</tbody>
+</table>
+
+<p><strong>Transcript</strong>:</p>
+<table>
+<tbody>
+    <tr>
+        <td><strong>Seconds</strong></td>
+        <td><strong>Actor</strong></td>
+        <td><strong>Message</strong></td>
+    </tr>
+${ejsData.transcript.map( t => {
+    return `<tr><td>${t.time_in_call_secs}</td><td>${t.role}</td><td>${t.message}</td>`;
+}).join("\n")}
+</tbody>
+</table>
+<body>
+</html>`)
+                ]);
                 server.module_log(module.filename,2,`Got assistant '${serverMessage.agent_name}' notification '${body_obj.type}'`,{
                     status          : serverMessage.status,
                     agentsName      : serverMessage.agent_name,
                     callSummary,
                     callData,
                     emailSubject,
-                    emailText
+                    emailText,
+                    emailHtml
                 });
                 server.sendEmail({
-                    to      :   callData.emailAddress,
-                    subject :   emailSubject,
-                    text    :   emailText
+                    to      : callData.emailAddress,
+                    subject : emailSubject,
+                    text    : emailText,
+                    html    : emailHtml
                 }).then(() => {
                     server.module_log(module.filename,2,`Sent email with call summary '${callSummary}' to '${callData.emailAddress}'`);
                 }).catch( err => {

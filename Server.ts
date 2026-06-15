@@ -86,14 +86,20 @@ export default class Server {
         }
         return this;
     }    
-    sendEmail(args:{ to:string, subject:string, text:string }) : Promise<void> {
+    sendEmail(args:{ 
+        to      : string, 
+        subject : string, 
+        text?   : string,
+        html?   : string
+    }) : Promise<void> {
         if( !this.nm_transport )
             throw Error(`Transport is not initialized`);
         return this.nm_transport.sendMail({
             from    : this.config.nm.from,
             to      : args.to,
             subject : args.subject,
-            text    : args.text
+            text    : args.text,
+            html    : args.html
         });
     }
     banVapeApi( seconds?: number ) {

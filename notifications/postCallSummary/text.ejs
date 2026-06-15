@@ -1,0 +1,12 @@
+Summary:
+<%=callSummary%>
+
+Call Data:
+<% Object.entries(callData).forEach(([name,value]) => { %>
+    <%=name%> : <%=value%>
+<% }) %>
+
+Transcript:
+<% transcript.map( t => { %>
+    At <%=t.time_in_call_secs%>s <%=t.role%>: <%=t.message%>
+<% %>}) %>

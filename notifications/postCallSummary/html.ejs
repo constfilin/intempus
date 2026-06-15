@@ -1,0 +1,40 @@
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml">
+<body width="100%" bgcolor="#F0F2F3" style="margin: 0;"><center style="width: 100%; background: #F0F2F3; text-align: left;">
+
+<p><%=callSummary%></p>
+<p><strong>Call Data</strong>:</p>
+<table>
+<tbody>
+    <tr>
+        <td><strong>Name</strong></td>
+        <td><strong>Value</strong></td>
+    </tr>
+<% Object.entries(callData).map(([name,value]) => { %>
+    <tr>
+        <td><%=name%></td>
+        <td><%=value%></td>
+    </tr>
+<% }) %>
+</tbody>
+</table>
+
+<p><strong>Transcript</strong>:</p>
+<table>
+<tbody>
+    <tr>
+        <td><strong>Seconds</strong></td>
+        <td><strong>Actor</strong></td>
+        <td><strong>Message</strong></td>
+    </tr>
+<% transcript.map( t => {
+    <tr>
+        <td><%=t.time_in_call_secs%></td>
+        <td><%=t.role%></td>
+        <td><%=t.message%></td>
+    </tr>
+<% }) %>
+</tbody>
+</table>
+
+</body>
+</html>
