@@ -54,18 +54,12 @@ const _getAsrKeywords = ( contacts:Contacts.Contact[] ) : string[] => {
         "Intempus",
     ];
 };
-/**
- * redirectCall – transfer the call to a phone number (group extension or
- * individual contact).
- *
- * Maps from the Vapi `transferCall` tool type to ElevenLabs `transfer_to_number`
- * system tool.
- */
+
 const _getGroupExtensionTransfers = ( dflt:ElevenLabs.PhoneNumberTransfer[]=[] ) : ElevenLabs.PhoneNumberTransfer[] => {
-    return Object.entries(elevenLabsConsts.groupExtensions).reduce( (transfers,[name,number]) => {
-        if( !transfers.some(t => t.phoneNumber === number) ) {
+    return Object.values(elevenLabsConsts.groupExtensions).reduce( (transfers,{name,phoneNumber}) => {
+        if( !transfers.some(t => t.phoneNumber === phoneNumber) ) {
             transfers.push({
-                phoneNumber     : number,
+                phoneNumber     : phoneNumber,
                 condition       : `Transfer the call when the caller needs ${name}`,
                 transferType    : "blind",
             });
@@ -166,13 +160,13 @@ const _completeAgent = (
 const _getKeywordActionTable = ( propertyManagerAction:string ) : string => {
     return `| Indent Keywords to Listen For | Action to Take |
         | :--- | :--- |
-        | Leasing, Rentals | Tell "Forwarding to leasing" and forward the call to ${elevenLabsConsts.groupExtensions['Leasing Group']} |
-        | Maintenance, Repair | Tell "Forwarding to maintenance" and forward the call to ${elevenLabsConsts.groupExtensions['Maintenance']} |
-        | Emergency | Tell "Forwarding to emergency line" and forward the call to ${elevenLabsConsts.groupExtensions['Emergency']} |
-        | Finance, Accounting, Payments, Accounts Payable, Account Receivable | Tell "Forwarding to finance" and forward the call to ${elevenLabsConsts.groupExtensions['Finance']} |
+        | Leasing, Rentals | Tell "Forwarding to leasing" and forward the call to ${elevenLabsConsts.groupExtensions.leasing.phoneNumber} |
+        | Maintenance, Repair | Tell "Forwarding to maintenance" and forward the call to ${elevenLabsConsts.groupExtensions.maintenance.phoneNumber} |
+        | Emergency | Tell "Forwarding to emergency line" and forward the call to ${elevenLabsConsts.groupExtensions.emergency.phoneNumber} |
+        | Finance, Accounting, Payments, Accounts Payable, Account Receivable | Tell "Forwarding to finance" and forward the call to ${elevenLabsConsts.groupExtensions.finance.phoneNumber} |
         | Operator, Representative, Customer Service | Clarify which department the caller wants to speak to (leasing/maintenance/finance/etc) and route the call to that department |
         | Property Manager | ${propertyManagerAction} |
-        | Sales | Tell "Forwarding to sales" and forward the call to ${elevenLabsConsts.groupExtensions['Sales']} |`;
+        | Sales | Tell "Forwarding to sales" and forward the call to ${elevenLabsConsts.groupExtensions.sales.phoneNumber} |`;
 }
 // ---------------------------------------------------------------------------
 // Assistants (agents)
@@ -324,7 +318,7 @@ ${_joinSteps([
 
 ${elevenLabsConsts.systemPromptHeader}
 ${elevenLabsConsts.systemPromptFooter}`,
-                        toolIds     : _getToolIds(toolsByName,['sendEmail']),
+                        toolIds     : _getToolIds(toolsByName,['setVariables']),
                         builtInTools: {
                             // "Intempus Introduction" transfers to special group extensions (leasing, emergency, etc)
                             transferToNumber: _getSystemToolConfigOutput(_getGroupExtensionTransfers())
@@ -404,15 +398,12 @@ ${_joinSteps([
     "Ask for the caller's name",
     "Ask for the name of the property",
     "Confirm both details back to the caller",
-    `ONLY AFTER confirming the caller's name and the property name, send an email using the 'sendEmail' tool with:
-    - To: "${config.notificationEmailAddress||'mkhesin@intempus.net'}"
-    - Subject: "New call to HOA from {{system__caller_id}}: [Property Name] - From [Caller Name]"
-    - Body: "A caller from {{system__caller_id}} is inquiring about property [Property Name] and is asking about [Caller's Request]."`
+    `ONLY AFTER confirming the caller's name and the property name, call 'setVariables' tool with emailAddress set to "${config.notificationEmailAddress||'mkhesin@intempus.net'}".`
 ])}
 </EMAILING_STEPS>
 
 ${elevenLabsConsts.systemPromptFooter}`,
-                        toolIds : _getToolIds(toolsByName,['sendEmail']),
+                        toolIds : _getToolIds(toolsByName,['setVariables']),
                         builtInTools: {
                             // "Intempus HOA" transfers to both "Intempus Introduction" and special group extensions (maintenance, emergency, etc)
                             transferToAgent:  _getTransferToAgent(_getAgentIds(agentsByName||{},["Intempus Introduction"])),
@@ -482,15 +473,12 @@ ${_joinSteps([
     "Ask for the caller's name",
     "Ask for the name of the property",
     "Confirm both details back to the caller",
-    `ONLY AFTER confirming the caller's name and the property name, send an email using the 'sendEmail' tool with:
-    - To: "${config.notificationEmailAddress||'mkhesin@intempus.net'}"
-    - Subject: "New Call to PropertyOwner from {{system__caller_id}}: [Property Name] - From [Caller Name]"
-    - Body: "A caller from {{system__caller_id}} is inquiring about property [Property Name] and is asking about [Caller's Request]"`
+    `ONLY AFTER confirming the caller's name and the property name, call tool 'setVariables' tool with emailAddress set to "${config.notificationEmailAddress||'mkhesin@intempus.net'}"`
 ])}
 </EMAILING_STEPS>
 
 ${elevenLabsConsts.systemPromptFooter}`,
-                        toolIds : _getToolIds(toolsByName,['sendEmail']),
+                        toolIds : _getToolIds(toolsByName,['setVariables']),
                         builtInTools: {
                             // "Intempus PropertyOwner" transfers to both "Intempus Introduction" and special group extensions (maintenance, emergency, etc)
                             transferToAgent:  _getTransferToAgent(_getAgentIds(agentsByName||{},["Intempus Introduction"])),
@@ -581,16 +569,13 @@ ${_joinSteps([
     `If the caller is looking to rent their property, ask: "What is the address of your property" and save the answer as 'propertyAddress'. Otherwise ask: "What state, county or zip code you would like your to live in?" and save the answer as 'locationInterest'.`,
     `Ask caller: "What is your first and last name?" and save the answer as 'name'.`,
     `Ask caller: "Would you like to leave us your email address" and if the caller responds affirmatively, then ask "Please provide your email address", re-confirm it and after the re-confirmation save the answer as 'emailAddress'.`,
-    `If the caller confirms the information, then tell them: "Thank you for providing this information. A representative will reach out to you shortly." and send an email:
-        - To: "${config.notificationEmailAddress||'mkhesin@intempus.net'}"
-        - Subject: "New Call for CallbackForm: [Property Name] - From [Caller Name]"
-        - Body: "A client {{clientType}} is interested in {{propertyInterest}}. Property address is {{propertyAddress}}. Location of interest is {{locationInterest}}. Client name is {{name}}, email address is {{emailAddress}}, phone number is {{customer.number}}.`,
+    `If the caller confirms the information, then tell them: "Thank you for providing this information. A representative will reach out to you shortly." and call tool 'setVariables' with emailAddress set to "${config.notificationEmailAddress||'mkhesin@intempus.net'}"`
 ])}
 </TASKS>
 
 ${elevenLabsConsts.systemPromptHeader}
 ${elevenLabsConsts.systemPromptFooter}`,
-                        toolIds : _getToolIds(toolsByName,['sendEmail']),
+                        toolIds : _getToolIds(toolsByName,['setVariables']),
                         builtInTools: {
                             // "Intempus CallbackForm" transfers to both "Intempus Introduction" and special group extensions (maintenance, emergency, etc)
                             transferToNumber: _getSystemToolConfigOutput(_getGroupExtensionTransfers()),
@@ -653,7 +638,7 @@ ${elevenLabsConsts.systemPromptHeader}
 ${_joinSteps(callRoutingInstructions)}
 </CALLROUTING>
 ${elevenLabsConsts.systemPromptFooter}`,
-                        toolIds : _getToolIds(toolsByName,['sendEmail','dispatchCall']),          
+                        toolIds : _getToolIds(toolsByName,['setVariables','dispatchCall']),          
                         builtInTools: {
                             // "Intempus DialByName" transfers to both "Intempus Introduction" and all kinds of contacts.
                             transferToAgent:  _getTransferToAgent(_getAgentIds(agentsByName||{},["Intempus Introduction"])),

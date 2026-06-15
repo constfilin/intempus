@@ -31,10 +31,6 @@ const _getToolCallSound = () : Partial<ElevenLabs.WebhookToolConfigInput> => {
 // Webhook tools  (server-side function calls)
 // ---------------------------------------------------------------------------
 
-/**
- * dispatchCall – look up a contact by name, check time-zone / business hours
- * and return dispatch instructions.
- */
 export const getDispatchCall = ( contacts:Contacts.Contact[] ) : ElevenLabs.ToolRequestModel => {
     return {
         toolConfig : {
@@ -67,9 +63,6 @@ export const getDispatchCall = ( contacts:Contacts.Contact[] ) : ElevenLabs.Tool
     };
 };
 
-/**
- * sendEmail – send an email to one of the known contacts.
- */
 export const getSendEmail = ( contacts:Contacts.Contact[] ) : ElevenLabs.ToolRequestModel => {
     const toEnums : string[] = [];
     contacts.forEach( c => {
@@ -108,9 +101,9 @@ export const getSendEmail = ( contacts:Contacts.Contact[] ) : ElevenLabs.ToolReq
                             description : "Name of the caller",
                             
                         },
-                        propertyName : {
+                        propertyId : {
                             type        : "string",
-                            description : "Name of the property the user is calling about"
+                            description : "Identifier or name of the property the user is calling about. Should look like a street address."
                         }
                     },
                     required : ["to","text","subject"]
@@ -123,17 +116,14 @@ export const getSendEmail = ( contacts:Contacts.Contact[] ) : ElevenLabs.ToolReq
                 sanitize        : false
             },{
                 source          : "response",
-                dynamicVariable : 'propertyName',
-                valuePath       : 'propertyName',
+                dynamicVariable : 'propertyId',
+                valuePath       : 'propertyId',
                 sanitize        : false
             }]
         }
     };
 };
 
-/**
- * guessState – attempt to determine the US state of the caller.
- */
 export const getGuessState = ( /*contacts:Contacts.Contact[]*/ ) : ElevenLabs.ToolRequestModel => {
     return {
         toolConfig : {
@@ -161,9 +151,6 @@ export const getGuessState = ( /*contacts:Contacts.Contact[]*/ ) : ElevenLabs.To
     };
 };
 
-/**
- * getFAQAnswer – retrieve an FAQ answer for a question.
- */
 export const getFAQAnswer = ( contacts:Contacts.Contact[] ) : ElevenLabs.ToolRequestModel => {
     return {
         toolConfig : {
@@ -286,6 +273,74 @@ export const getTransferInstructions = () : ElevenLabs.ToolRequestModel => {
                 source          : "response",
                 dynamicVariable : ELabsConsts.phoneTransferDestinationVarName,
                 valuePath       : ELabsConsts.phoneTransferDestinationVarName,
+                sanitize        : false
+            }]
+        }
+    };  
+}
+
+export const setVariables = () : ElevenLabs.ToolRequestModel => {
+    return {
+        toolConfig : {
+            type                : "webhook",
+            name                : "setVariables",
+            description         : "Setup dynamic variables based on the arguments",
+            responseTimeoutSecs : 5,
+            disableInterruptions  : true, // Potentially we have to make it inunrerruptable
+            ..._getToolCallSound(),
+            apiSchema : {
+                url             : _getToolUrl("setVariables"),
+                method          : "POST",
+                requestHeaders  : _getWebhookHeaders(),
+                requestBodySchema : {
+                    type        : "object",
+                    properties  : {
+                        sessionId: {
+                            type            : "string",
+                            dynamicVariable : "system__conversation_id",
+                            //description     : "user session identifier"
+                        },
+                        emailAddress : {
+                            type        : "string",
+                            description : "Email address the email needs to be sent to"
+                        },
+                        callerName : {
+                            type        : "string",
+                            description : "Name of the caller",
+                        },
+                        propertyId : {
+                            type        : "string",
+                            description : "Identifier or name of the property the user is calling about. Should look like a street address."
+                        },
+                        callReason : {
+                            type        : "string",
+                            description : "Reason for the call as identified by the caller or determined based on caller answers"
+                        }
+                    },
+                    // If `propertyId` is not passed then the backend API uses
+                    // information that was stored in the session earlier.
+                    required : ["sessionId","emailAddress"]
+                },
+            },
+            assignments : [{
+                source          : "response",
+                dynamicVariable : "emailAddress",
+                valuePath       : "emailAddress",
+                sanitize        : false
+            },{
+                source          : "response",
+                dynamicVariable : "callerName",
+                valuePath       : "callerName",
+                sanitize        : false
+            },{
+                source          : "response",
+                dynamicVariable : "propertyId",
+                valuePath       : "propertyId",
+                sanitize        : false
+            },{
+                source          : "response",
+                dynamicVariable : "callReason",
+                valuePath       : "callReason",
                 sanitize        : false
             }]
         }

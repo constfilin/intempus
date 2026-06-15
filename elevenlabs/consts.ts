@@ -1,5 +1,7 @@
 // Unnecessary since elevenLabs manages languages automatically
 
+import { name } from "ejs";
+
 // export const languageInstructions = `- You can speak and understand: English, Spanish.
 // - NEVER EVER EVER announce any emoticons (e.g. smiling face) in any language.
 // - Initially choose the language based on {{language}} variable. If the variable is not set then choose English.
@@ -63,11 +65,31 @@ ${errorHandlingAndFallback}
 </ERROR_HANDLING_AND_FALLBACK>`;
 
 export const groupExtensions = {
-    "Maintenance"       : "+15103404275",
-    "Emergency"         : "+19162358444",
-    "Leasing Group"     : "+14083593034",
-    "Sales"             : "+14089635182",
-    "Finance"           : "+14089131082",
+    maintenance     : {
+        name            : "Maintenance",
+        phoneNumber     : "+15103404275",
+        emailAddress    : "repair@intempus.net"
+    },
+    emergency       : {
+        name            : "Emergency",
+        phoneNumber     : "+19162358444",
+        emailAddress    : "operator@intempus.net"
+    },
+    leasing         : {
+        name            : "Leasing Group",
+        phoneNumber     : "+14083593034",
+        emailAddress    : "leasing@intempus.net"
+    },
+    sales           : {
+        name            : "Sales",
+        phoneNumber     : "+14089635182",
+        emailAddress    : "sales@intempus.net"
+    },
+    finance         : {
+        name            : "Finance",
+        phoneNumber     : "+14089131082",
+        emailAddress    : "finance@intempus.net"
+    }
 }
 
 export const callerIntentMenuInstructions = `Identify the category of the call by asking the next series of yes/no questions one-by-one. 

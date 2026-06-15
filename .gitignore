@@ -4,3 +4,5 @@ updated_transfer_call_function.json
 .env
 *.txt
 .vscode/*
+*.log
+out

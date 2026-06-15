@@ -25,6 +25,7 @@ export const toolsByName = {
     'getFAQAnswer'              : tools.getFAQAnswer,
     'getInstructionsByPhone'    : tools.getInstructionsByPhone,
     'getTransferInstructions'   : tools.getTransferInstructions,
+    'setVariables'              : tools.setVariables
 } as unknown as Record<string,(
     contacts        : Contacts.Contact[]
 ) => ElevenLabs.ToolRequestModel>;

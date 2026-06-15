@@ -34,7 +34,7 @@
 The web server exposes the following endpoints under `/api`.
 
 ### Tool endpoints
-- `POST /api/tool/sendEmail`
+- `POST /api/tool/setVariables`
 - `POST /api/tool/dispatchCall`
 - `POST /api/tool/guessState`
 - `POST /api/tool/getFAQAnswer`
